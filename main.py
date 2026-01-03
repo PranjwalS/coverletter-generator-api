@@ -5,4 +5,4 @@ app = FastAPI()
 # Azure DevOps connection check
 @app.get("/")
 def root():
-    return {"status": "ok", "message": "checking status"}
+    return {"status": "ok", "message": "checking status closed"}
