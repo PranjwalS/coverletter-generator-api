@@ -2,8 +2,10 @@ import httpx
 from reportlab.lib.pagesizes import LETTER
 from reportlab.pdfgen import canvas
 from bs4 import BeautifulSoup
-from selenium import webdriver
-
+# from selenium import webdriver
+import requests
+from dotenv import load_dotenv
+import os
 
 r = httpx.get('https://www.linkedin.com/jobs/view/4354624586/')
 
@@ -16,15 +18,15 @@ def makeSoup(html):
     soup = (f"{titl} \n {description}")
     return soup
 
-print(makeSoup(r.text))
+# print(makeSoup(r.text))
 
-#### Selenium attemp at scraping
+# #### Selenium attemp at scraping
 
-driver = webdriver.Chrome()
-driver.get("https://www.linkedin.com/jobs/view/4354624586/")
-html = driver.page_source
-driver.quit()
-print(makeSoup(html))
+# driver = webdriver.Chrome()
+# driver.get("https://www.linkedin.com/jobs/view/4354624586/")
+# html = driver.page_source
+# driver.quit()
+# print(makeSoup(html))
 
 
 
@@ -56,4 +58,23 @@ def makePdf(titl, description):
             y -= line_height
             
     c.save()
+
+
+
+
+load_dotenv()
+HF_API_TOKEN = os.getenv("HF_API_TOKEN")
+if not HF_API_TOKEN:
+    raise RuntimeError("HF_API_TOKEN not set")
+
+API_URL = "https://router.huggingface.co/models/mistralai/Mixtral-8x22B-v0.1"
+headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+
+payload = {
+    "inputs": "JOB DESCRIPTION HERE\n\nWrite a tailored cover letter.",
+    "parameters": {"max_new_tokens": 400}
+}
+
+r = requests.post(API_URL, headers=headers, json=payload)
+print(r.json()[0]["generated_text"])
 
