@@ -18,10 +18,10 @@ def read_form(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-load_dotenv()
-HF_API_TOKEN = os.getenv("HF_API_TOKEN")
-if not HF_API_TOKEN:
-    raise RuntimeError("HF_API_TOKEN not set")
+# load_dotenv()
+# HF_API_TOKEN = os.getenv("HF_API_TOKEN")
+# if not HF_API_TOKEN:
+#     raise RuntimeError("HF_API_TOKEN not set")
 
 BLOCK_MARKERS = [
     "enable javascript",
@@ -66,7 +66,7 @@ def submit_url(url: str = Form(...)):
     
     print(soup)
     makePdf(titl, description)
-    print("The HF token loaded:", bool(os.getenv("HF_API_TOKEN")))
+    # print("The HF token loaded:", bool(os.getenv("HF_API_TOKEN")))
 
     return {"status": "success", "url": url}
 
