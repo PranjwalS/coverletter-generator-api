@@ -62,7 +62,7 @@ def submit_url(url: str = Form(...)):
     #     driver.quit()
     #     print(makeSoup(html)[0])
     # else:
-    
+    #
     
     print(soup)
     makePdf(titl, description)
