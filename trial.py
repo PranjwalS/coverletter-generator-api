@@ -29,30 +29,31 @@ print(makeSoup(html))
 
 
 
-# ### Pdf maker
-# c = canvas.Canvas("job_data.pdf", LETTER)
-# width, height = LETTER
-# x = 50
-# y = height-50
-# max_chars = 120
-# font_size = 8
-# line_height = font_size+3
-# c.setFont("Helvetica", font_size)
-# c.drawString(x,y,titl)
-# y-=line_height+10
-# for line in description.split('\n'):
-#     if line.strip()== "":
-#         continue
-    
-#     for i in range(0, len(line), max_chars):
-#         c.setFont("Helvetica", font_size)
- 
-#         if y < 50:
-#             c.showPage()   
-#             y = height-50
-            
-#         c.drawString(x, y, line[i: i+max_chars])
-#         y -= line_height
+### Pdf maker
+def makePdf(titl, description):
+    c = canvas.Canvas("job_data.pdf", LETTER)
+    width, height = LETTER
+    x = 50
+    y = height-50
+    max_chars = 120
+    font_size = 8
+    line_height = font_size+3
+    c.setFont("Helvetica", font_size)
+    c.drawString(x,y,titl)
+    y-=line_height+10
+    for line in description.split('\n'):
+        if line.strip()== "":
+            continue
         
-# c.save()
+        for i in range(0, len(line), max_chars):
+            c.setFont("Helvetica", font_size)
+    
+            if y < 50:
+                c.showPage()   
+                y = height-50
+                
+            c.drawString(x, y, line[i: i+max_chars])
+            y -= line_height
+            
+    c.save()
 

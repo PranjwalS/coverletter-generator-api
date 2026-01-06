@@ -14,3 +14,7 @@ Thumbs.db
 
 # VS Code
 .vscode/
+
+#env
+.env
+.env.*

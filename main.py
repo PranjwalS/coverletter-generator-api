@@ -6,7 +6,9 @@ from reportlab.lib.pagesizes import LETTER
 from reportlab.pdfgen import canvas
 from bs4 import BeautifulSoup
 from selenium import webdriver
-
+from trial import makePdf
+from dotenv import load_dotenv
+import os
 
 app = FastAPI()
 templates = Jinja2Templates(directory="pages")
@@ -15,6 +17,11 @@ templates = Jinja2Templates(directory="pages")
 def read_form(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
+load_dotenv()
+HF_API_TOKEN = os.getenv("HF_API_TOKEN")
+if not HF_API_TOKEN:
+    raise RuntimeError("HF_API_TOKEN not set")
 
 BLOCK_MARKERS = [
     "enable javascript",
@@ -30,6 +37,7 @@ def submit_url(url: str = Form(...)):
     print("Received URL:", url) 
     
     r = httpx.get(url)
+    
     def makeSoup(text):
         soup = BeautifulSoup(text, 'html.parser')
         description = soup.find("div", class_="description__text description__text--rich").text
@@ -53,6 +61,9 @@ def submit_url(url: str = Form(...)):
         print(makeSoup(html)[0])
     else:
         print(soup)
+        makePdf(titl, description)
+        print("token loaded too")
 
     return {"status": "success", "url": url}
+
 
