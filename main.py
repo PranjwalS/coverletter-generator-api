@@ -18,10 +18,10 @@ def read_form(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-# load_dotenv()
-# HF_API_TOKEN = os.getenv("HF_API_TOKEN")
-# if not HF_API_TOKEN:
-#     raise RuntimeError("HF_API_TOKEN not set")
+load_dotenv()
+HF_API_TOKEN = os.getenv("HF_API_TOKEN")
+if not HF_API_TOKEN:
+    raise RuntimeError("HF_API_TOKEN not set")
 
 BLOCK_MARKERS = [
     "enable javascript",
