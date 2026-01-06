@@ -5,7 +5,7 @@ import httpx
 from reportlab.lib.pagesizes import LETTER
 from reportlab.pdfgen import canvas
 from bs4 import BeautifulSoup
-from selenium import webdriver
+# from selenium import webdriver
 from trial import makePdf
 from dotenv import load_dotenv
 import os
@@ -46,23 +46,27 @@ def submit_url(url: str = Form(...)):
         soup = (f"{titl} \n {description}")
         return soup, titl, description
 
-    score = 0
     soup, titl, description = makeSoup(r.text)
-    if not titl: score += 3
-    if len(description) < 200: score += 3
-    if len(r.text) < 1000: score += 2
-    if any(m in soup.lower() for m in BLOCK_MARKERS): score += 5
-    if r.status_code != 200: score += 5
-    if score >= 5:
-        driver = webdriver.Chrome()
-        driver.get(url)
-        html = driver.page_source
-        driver.quit()
-        print(makeSoup(html)[0])
-    else:
-        print(soup)
-        makePdf(titl, description)
-        print("HF token loaded:", bool(os.getenv("HF_API_TOKEN")))
+    
+    ##selenium code, needs revisiting later since f1 on azure can't handle, could work on b1
+    # score = 0
+    # # if not titl: score += 3
+    # if len(description) < 200: score += 3
+    # if len(r.text) < 1000: score += 2
+    # if any(m in soup.lower() for m in BLOCK_MARKERS): score += 5
+    # if r.status_code != 200: score += 5
+    # if score >= 5:
+    #     driver = webdriver.Chrome()
+    #     driver.get(url)
+    #     html = driver.page_source
+    #     driver.quit()
+    #     print(makeSoup(html)[0])
+    # else:
+    
+    
+    print(soup)
+    makePdf(titl, description)
+    print("HF token loaded:", bool(os.getenv("HF_API_TOKEN")))
 
     return {"status": "success", "url": url}
 
