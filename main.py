@@ -13,3 +13,4 @@ def read_form(request: Request):
 def submit_url(url: str = Form(...)):
     print("Received URL:", url)  
     return {"status": "success", "url": url}
+
