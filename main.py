@@ -62,7 +62,7 @@ def submit_url(url: str = Form(...)):
     else:
         print(soup)
         makePdf(titl, description)
-        print("token loaded too")
+        print("HF token loaded:", bool(os.getenv("HF_API_TOKEN")))
 
     return {"status": "success", "url": url}
 
