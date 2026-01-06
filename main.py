@@ -7,7 +7,7 @@ from reportlab.pdfgen import canvas
 from bs4 import BeautifulSoup
 # from selenium import webdriver
 from trial import makePdf
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 import os
 
 app = FastAPI()
