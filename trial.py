@@ -44,7 +44,7 @@ def makePdf(titl, description):
     c.setFont("Helvetica", font_size)
     c.drawString(x,y,titl)
     y-=line_height+10
-    for line in description.split('\n'):
+    for line in description.split("\n"):
         if line.strip()== "":
             continue
         
@@ -62,27 +62,28 @@ def makePdf(titl, description):
 
 
 
+text = makeSoup(r.text)
 
+load_dotenv()
+HF_API_TOKEN = os.getenv("HF_API_TOKEN")
 
-# load_dotenv()
-# HF_API_TOKEN = os.getenv("HF_API_TOKEN")
+import os
+from openai import OpenAI
 
-# import os
-# from openai import OpenAI
+client = OpenAI(
+    base_url="https://router.huggingface.co/v1",
+    api_key=HF_API_TOKEN,
+)
 
-# client = OpenAI(
-#     base_url="https://router.huggingface.co/v1",
-#     api_key=HF_API_TOKEN,
-# )
+completion = client.chat.completions.create(
+    model="meta-llama/Llama-3.2-3B-Instruct",
+    messages=[
+        {
+            "role": "user",
+            "content": (f"Generate a 200 words long coverletter for a software engineering position based on the following job information {text}")
+        }
+    ],
+)
 
-# completion = client.chat.completions.create(
-#     model="meta-llama/Llama-3.2-3B-Instruct",
-#     messages=[
-#         {
-#             "role": "user",
-#             "content": "Generate a 20 words long coverletter for a software engineering position"
-#         }
-#     ],
-# )
-
-# print(completion.choices[0].message)
+output = completion.choices[0].message.content
+makePdf("", output)
