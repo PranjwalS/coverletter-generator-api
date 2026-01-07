@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import requests
 from dotenv import load_dotenv
 import os
+from huggingface_hub import InferenceClient
 
 r = httpx.get('https://www.linkedin.com/jobs/view/4354624586/')
 
@@ -62,19 +63,26 @@ def makePdf(titl, description):
 
 
 
-load_dotenv()
-HF_API_TOKEN = os.getenv("HF_API_TOKEN")
-if not HF_API_TOKEN:
-    raise RuntimeError("HF_API_TOKEN not set")
 
-API_URL = "https://router.huggingface.co/models/mistralai/Mixtral-8x22B-v0.1"
-headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+# load_dotenv()
+# HF_API_TOKEN = os.getenv("HF_API_TOKEN")
 
-payload = {
-    "inputs": "JOB DESCRIPTION HERE\n\nWrite a tailored cover letter.",
-    "parameters": {"max_new_tokens": 400}
-}
+# import os
+# from openai import OpenAI
 
-r = requests.post(API_URL, headers=headers, json=payload)
-print(r.json()[0]["generated_text"])
+# client = OpenAI(
+#     base_url="https://router.huggingface.co/v1",
+#     api_key=HF_API_TOKEN,
+# )
 
+# completion = client.chat.completions.create(
+#     model="meta-llama/Llama-3.2-3B-Instruct",
+#     messages=[
+#         {
+#             "role": "user",
+#             "content": "Generate a 20 words long coverletter for a software engineering position"
+#         }
+#     ],
+# )
+
+# print(completion.choices[0].message)
