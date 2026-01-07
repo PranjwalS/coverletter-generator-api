@@ -81,8 +81,7 @@ def submit_url(url: str = Form(...)):
 
 
     output = completion.choices[0].message.content
-    makePdf("", output)
-
+    makePdf('Dear Hiring Manager,', output)
     return {"status": "success", "url": url}
 
 

@@ -59,12 +59,7 @@ def makePdf(titl, description):
                 
             c.drawString(x, y, line[i: i+max_chars])
             y -= line_height
-            
+    c.drawString(x,y-line_height, "Sincerely,")
+    c.drawString(x,y-(line_height*2), "Pranjwal Singh")
     c.save()
-
-
-
-text = makeSoup(r.text)
-
-
 
