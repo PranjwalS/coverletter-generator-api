@@ -7,6 +7,9 @@ import requests
 from dotenv import load_dotenv
 import os
 from huggingface_hub import InferenceClient
+from prompt import makePrompt
+from openai import OpenAI
+
 
 r = httpx.get('https://www.linkedin.com/jobs/view/4354624586/')
 
@@ -67,8 +70,7 @@ text = makeSoup(r.text)
 load_dotenv()
 HF_API_TOKEN = os.getenv("HF_API_TOKEN")
 
-import os
-from openai import OpenAI
+
 
 client = OpenAI(
     base_url="https://router.huggingface.co/v1",
@@ -77,13 +79,11 @@ client = OpenAI(
 
 completion = client.chat.completions.create(
     model="meta-llama/Llama-3.2-3B-Instruct",
-    messages=[
-        {
-            "role": "user",
-            "content": (f"Generate a 200 words long coverletter for a software engineering position based on the following job information {text}")
-        }
-    ],
+    messages=[{"role": "user", "content": makePrompt(text)}],
+    max_tokens=400,
+    temperature=0.4,
 )
+
 
 output = completion.choices[0].message.content
 makePdf("", output)
