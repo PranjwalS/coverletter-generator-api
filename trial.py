@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 import requests
 from dotenv import load_dotenv
 import os
-from huggingface_hub import InferenceClient
 from prompt import makePrompt
 from openai import OpenAI
 
@@ -37,7 +36,7 @@ def makeSoup(html):
 
 ### Pdf maker
 def makePdf(titl, description):
-    c = canvas.Canvas("job_data.pdf", LETTER)
+    c = canvas.Canvas("coverletter.pdf", LETTER)
     width, height = LETTER
     x = 50
     y = height-50
@@ -67,23 +66,5 @@ def makePdf(titl, description):
 
 text = makeSoup(r.text)
 
-load_dotenv()
-HF_API_TOKEN = os.getenv("HF_API_TOKEN")
 
 
-
-client = OpenAI(
-    base_url="https://router.huggingface.co/v1",
-    api_key=HF_API_TOKEN,
-)
-
-completion = client.chat.completions.create(
-    model="meta-llama/Llama-3.2-3B-Instruct",
-    messages=[{"role": "user", "content": makePrompt(text)}],
-    max_tokens=400,
-    temperature=0.4,
-)
-
-
-output = completion.choices[0].message.content
-makePdf("", output)

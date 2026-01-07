@@ -9,6 +9,8 @@ from bs4 import BeautifulSoup
 from trial import makePdf
 from dotenv import load_dotenv
 import os
+from prompt import makePrompt
+from openai import OpenAI
 
 app = FastAPI()
 templates = Jinja2Templates(directory="pages")
@@ -63,10 +65,23 @@ def submit_url(url: str = Form(...)):
     #     print(makeSoup(html)[0])
     # else:
     #
-    
-    print(soup)
-    # makePdf(titl, description)
-    print("The HF token loaded:", bool(os.getenv("HF_API_TOKEN")))
+
+        
+    client = OpenAI(
+        base_url="https://router.huggingface.co/v1",
+        api_key=HF_API_TOKEN,
+    )
+
+    completion = client.chat.completions.create(
+        model="meta-llama/Llama-3.2-3B-Instruct",
+        messages=[{"role": "user", "content": makePrompt(soup)}],
+        max_tokens=500,
+        temperature=0.4,
+    )
+
+
+    output = completion.choices[0].message.content
+    makePdf("", output)
 
     return {"status": "success", "url": url}
 

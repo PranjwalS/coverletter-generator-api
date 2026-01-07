@@ -31,9 +31,10 @@ def makePrompt(text):
 
     Body Paragraph 1:
     - Match candidate skills to job requirements. Talk shortly about the CJCR and Ericsson positions as corporate experience and then extend about the POS System Project from my cv text as follows.
-
+    - Specifically, I need the first sentence about Waterloo CS (line 2 in cv), the next about CJCR (line 3 in cv), then one sentence about Ericsson (line 4 in cv), and 2 sentences on POS Ecosystem (line 6 in cv) 
+    
     Body Paragraph 2:
-    - Highlight relevant projects or experience.
+    - Highlight relevant projects or experience. (line 5 in cv)
 
     Closing:
     - Express interest in interview and appreciation.
@@ -45,7 +46,8 @@ def makePrompt(text):
     {text}
 
     ======== OUTPUT RULES ========
-    - Max 300 words
+    - Min 300 words
+    - Max 350 words
     - No bullet points
     - No placeholders
     - No emojis
