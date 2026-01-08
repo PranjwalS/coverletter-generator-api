@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 import httpx
 from reportlab.lib.pagesizes import LETTER
@@ -35,7 +35,7 @@ BLOCK_MARKERS = [
 
 
 @app.post("/submit-url")
-def submit_url(url: str = Form(...)):
+def submit_url(request:Request, url: str = Form(...)):
     print("Received URL:", url) 
     
     r = httpx.get(url)
@@ -82,6 +82,9 @@ def submit_url(url: str = Form(...)):
 
     output = completion.choices[0].message.content
     makePdf('Dear Hiring Manager,', output)
-    return {"status": "success", "url": url}
+    return templates.TemplateResponse("download_pdf.html", {"request":request})
 
 
+@app.get("/coverletter.pdf")
+def get_pdf():
+    return FileResponse("coverletter.pdf", media_type="application/pdf")
