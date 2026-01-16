@@ -13,7 +13,8 @@ Projects: POS Ecosystem Web and Mobile, active from 2025 to present. Developed a
 
 Projects: App and Website Restriction Android App called mute, active from 2025 to present. Built an Android application for creating custom restriction profiles to block apps, websites, and URL keywords. Features include timers, daily schedules, location triggers, and usage limits. Includes notification management that suppresses non-essential alerts while keeping priority notifications. Backend uses FastAPI on Azure App Service for account backups, restriction templates, usage statistics, and safe access recovery. Technology stack includes Kotlin, Jetpack Compose, FastAPI, Python, PostgreSQL, Azure App Service, REST APIs, and Android System Services.
 """
-
+#### HAVE TO REDESIGN THE PROMPT IN HERE SINCE I NEED TO KEEP A CONSTANT SUMMARY FROM THE CV TO SAVE TOKENS BUT ONLY ADJUST SECOND PART ACCORDINLY
+####### ALSO SEE WHETHER WE CAN LITERALLY BE CREATING A NEW CV DEPENDING ON THE COMPANY EVERY TIME OVER AND OVER MATE, ADJUSTING SECTIONS TO NEEDS (IN LATEX CODE THO SO SET THAT UP)
 def makePrompt(text):
     prompt_data = f"""
     You are a professional technical recruiter and resume writer.
