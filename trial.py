@@ -10,7 +10,7 @@ from prompt import makePrompt
 from openai import OpenAI
 
 
-r = httpx.get('https://www.linkedin.com/jobs/view/4354624586/')
+r = httpx.get('https://www.linkedin.com/jobs/view/4283101921')
 
 
 def makeSoup(html):    
@@ -21,7 +21,8 @@ def makeSoup(html):
     soup = (f"{titl} \n {description}")
     return soup
 
-# print(makeSoup(r.text))
+
+print(makeSoup(r.text))
 
 # #### Selenium attemp at scraping
 
@@ -63,3 +64,4 @@ def makePdf(titl, description):
     c.drawString(x,y-(line_height*2), "Pranjwal Singh")
     c.save()
 
+makePdf("", r.text)
