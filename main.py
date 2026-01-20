@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 import os
 from prompt import makePrompt
 from openai import OpenAI
-from trial import makeSoup
 
 app = FastAPI()
 templates = Jinja2Templates(directory="pages")
@@ -33,9 +32,6 @@ BLOCK_MARKERS = [
     "access denied",
     "robot"
 ]
-
-
-
 
 
 @app.post("/submit-url")
