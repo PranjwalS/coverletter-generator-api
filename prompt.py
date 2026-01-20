@@ -13,47 +13,46 @@ Projects: POS Ecosystem Web and Mobile, active from 2025 to present. Developed a
 
 Projects: App and Website Restriction Android App called mute, active from 2025 to present. Built an Android application for creating custom restriction profiles to block apps, websites, and URL keywords. Features include timers, daily schedules, location triggers, and usage limits. Includes notification management that suppresses non-essential alerts while keeping priority notifications. Backend uses FastAPI on Azure App Service for account backups, restriction templates, usage statistics, and safe access recovery. Technology stack includes Kotlin, Jetpack Compose, FastAPI, Python, PostgreSQL, Azure App Service, REST APIs, and Android System Services.
 """
-#### HAVE TO REDESIGN THE PROMPT IN HERE SINCE I NEED TO KEEP A CONSTANT SUMMARY FROM THE CV TO SAVE TOKENS BUT ONLY ADJUST SECOND PART ACCORDINLY
-####### ALSO SEE WHETHER WE CAN LITERALLY BE CREATING A NEW CV DEPENDING ON THE COMPANY EVERY TIME OVER AND OVER MATE, ADJUSTING SECTIONS TO NEEDS (IN LATEX CODE THO SO SET THAT UP)
-def makePrompt(text):
+
+
+
+
+cv_skillset = """Technical Skills: Programming languages include Python, JavaScript, Kotlin, C, SQL, Bash, and Racket. 
+Frameworks include React, React Native, Vue.js, Jetpack Compose, FastAPI, Flask, .NET, and Celery. 
+Platforms and tools include Linux, GitHub, Docker, Jenkins, Supabase, PostgreSQL, Vercel, Render, Azure Suite, Microsoft Azure DevOps, Power Platform, and Azure App Service."""
+
+def makePrompt(job_text):
     prompt_data = f"""
     You are a professional technical recruiter and resume writer.
 
     TASK:
-    Generate a concise, tailored cover letter using the template below. Keep it very humble and promising as I'm a new university student
-    Highlight I'm studying Computer Science at University of Waterloo
-    Do NOT exceed 300 words.
-    Do NOT invent experience.
-    Use professional but natural language.
+    Generate the first two paragraphs of a concise, tailored cover letter based on the job posting below. Focus on making it professional, humble, and enthusiastic. Do NOT invent any experience. 
+    IMPORTANT: Do not add greetings, introductions like "Here’s your cover letter", placeholders, or any commentary. Do NOT include anything that makes the text look AI-generated. Start immediately with the first sentence of paragraph 1 and end at the last sentence of paragraph 2. Only these two paragraphs.
 
-    ======== COVER LETTER TEMPLATE ========
-    Opening:
-    - 1–2 sentences showing interest in the role and company.
+    Paragraph 1 (Intro):
+    - Show genuine interest in the role and the company.
+    - Make it 2–3 sentences.
+    - Mention why the position excites you and aligns with your academic and career focus.
 
-    Body Paragraph 1:
-    - Match candidate skills to job requirements. Talk shortly about the CJCR and Ericsson positions as corporate experience and then extend about the POS System Project from my cv text as follows.
-    - Specifically, I need the first sentence about Waterloo CS (line 2 in cv), the next about CJCR (line 3 in cv), then one sentence about Ericsson (line 4 in cv), and 2 sentences on POS Ecosystem (line 6 in cv) 
-    
-    Body Paragraph 2:
-    - Highlight relevant projects or experience. (line 5 in cv)
+    Paragraph 2 (Interest & Skill Alignment):
+    - Highlight 1–2 responsibilities, technologies, or tools from the job posting in very short phrases (half a sentence max).
+    - Identify 1–3 concrete responsibilities, tools, or technologies **explicitly mentioned in the job description**
+    - Write 3–4 concise sentences explaining your interest in these specific responsibilities or technologies. 
+    - Focus on curiosity, enthusiasm, and willingness to learn. Show that you understand the role and the technologies it uses. 
+    - Keep sentences short, clear, and professional; do not insert filler or vague generalities. MAKE IT VERY TIGHT AND STRONG, AND PUNCHY.
+    - Make the paragraph 3–4 sentences.
+    - Avoid vague phrases, soft HR-style content, or generic statements about company culture.
+    - Focus on connecting your skills to the company’s requirements while emphasizing curiosity and willingness to grow.
 
-    Closing:
-    - Express interest in interview and appreciation.
+    JOB POSTING TEXT:
+    {job_text}
 
-    ======== CANDIDATE CV ========
-    {cv_text}
-
-    ======== JOB POSTING ========
-    {text}
-
-    ======== OUTPUT RULES ========
-    - Min 300 words
-    - Max 350 words
-    - No bullet points
-    - No placeholders
-    - No emojis
-    - No markdown
-    - No "Here's your...", just put the coverletter text straight
+    OUTPUT RULES:
+    - The text must read like it was written by a human for this job. It should be indistinguishable from a human-written cover letter.
+    - Absolutely no greetings, placeholders, salutations, or any extra commentary. Do NOT write “Dear”, “Hello”, “Here’s your cover letter”, or anything else — the text must start directly with the first sentence of the intro paragraph, and ONLY include paragraph 1 and paragraph 2, and nothing after that please.
+    - Provide only plain text, no markdown, no bullet points, no placeholders. Make it plain text, just straight into the cover letter.
+    - Keep paragraphs clear, professional, and natural.
+    - Do NOT exceed 200 words, but minimum 150 words for the first two paragraphs combined.
+    - Do NOT include the CV summary or closing; these will be added later by me.
     """
-    
     return prompt_data

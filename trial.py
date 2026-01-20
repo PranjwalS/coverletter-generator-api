@@ -22,7 +22,6 @@ def makeSoup(html):
     return soup
 
 
-print(makeSoup(r.text))
 
 # #### Selenium attemp at scraping
 
@@ -64,4 +63,4 @@ def makePdf(titl, description):
     c.drawString(x,y-(line_height*2), "Pranjwal Singh")
     c.save()
 
-makePdf("", r.text)
+# makePdf("", r.text)

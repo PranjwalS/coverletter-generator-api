@@ -6,11 +6,12 @@ from reportlab.lib.pagesizes import LETTER
 from reportlab.pdfgen import canvas
 from bs4 import BeautifulSoup
 # from selenium import webdriver
-from trial import makePdf
+from pdf_generator import make_pdf
 from dotenv import load_dotenv
 import os
 from prompt import makePrompt
 from openai import OpenAI
+from trial import makeSoup
 
 app = FastAPI()
 templates = Jinja2Templates(directory="pages")
@@ -34,12 +35,17 @@ BLOCK_MARKERS = [
 ]
 
 
+
+
+
 @app.post("/submit-url")
 def submit_url(request:Request, url: str = Form(...)):
     print("Received URL:", url) 
     
+    ## simple scrape from url recieved
     r = httpx.get(url)
     
+    ## parse html scraped data
     def makeSoup(text):
         soup = BeautifulSoup(text, 'html.parser')
         description = soup.find("div", class_="description__text description__text--rich").text
@@ -66,7 +72,8 @@ def submit_url(request:Request, url: str = Form(...)):
     # else:
     #
 
-        
+
+    ## hugging face call for coverletter generation        
     client = OpenAI(
         base_url="https://router.huggingface.co/v1",
         api_key=HF_API_TOKEN,
@@ -81,7 +88,9 @@ def submit_url(request:Request, url: str = Form(...)):
 
 
     output = completion.choices[0].message.content
-    makePdf('Dear Hiring Manager,', output)
+
+    ## text to pdf
+    make_pdf(output)
     return templates.TemplateResponse("download_pdf.html", {"request":request})
 
 
