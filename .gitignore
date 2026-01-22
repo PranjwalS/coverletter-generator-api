@@ -18,3 +18,7 @@ Thumbs.db
 #env
 .env
 .env.*
+
+
+# Ignore secrets folder
+secrets/
