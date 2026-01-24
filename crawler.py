@@ -7,6 +7,7 @@ from datetime import datetime
 import time
 from supabase import create_client
 
+print("Script started at:", datetime.now())
 
 load_dotenv()
 HEADLESS = bool(os.getenv("HEADLESS"))
@@ -134,7 +135,7 @@ def crawler_linkedin(playwright, cookies):
 search_config = {
     "keywords": [
         'Fall 2026',
-        # 'Autumn 2026'
+        'Autumn 2026'
     ],
     "geoIDs": {
         "Canada": "101174742",
@@ -149,3 +150,5 @@ with sync_playwright() as playwright:
     with open("secrets/linkedin_cookies.json", "r") as f:
         cookies = json.load(f)
     print(crawler_linkedin(playwright, cookies))
+    
+print("Script finished at:", datetime.now())
