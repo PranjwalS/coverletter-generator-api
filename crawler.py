@@ -152,3 +152,4 @@ with sync_playwright() as playwright:
     print(crawler_linkedin(playwright, cookies))
     
 print("Script finished at:", datetime.now())
+

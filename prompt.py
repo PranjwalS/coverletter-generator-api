@@ -14,14 +14,27 @@ Projects: POS Ecosystem Web and Mobile, active from 2025 to present. Developed a
 Projects: App and Website Restriction Android App called mute, active from 2025 to present. Built an Android application for creating custom restriction profiles to block apps, websites, and URL keywords. Features include timers, daily schedules, location triggers, and usage limits. Includes notification management that suppresses non-essential alerts while keeping priority notifications. Backend uses FastAPI on Azure App Service for account backups, restriction templates, usage statistics, and safe access recovery. Technology stack includes Kotlin, Jetpack Compose, FastAPI, Python, PostgreSQL, Azure App Service, REST APIs, and Android System Services.
 """
 
-
+closing = """Thank you for your time and consideration. I would greatly appreciate the opportunity to further discuss how my interests and experiences align with this role and how I could contribute to your team. I can be reached at 438-773-4010 or singhpranjwal@gmail.com, and I look forward to hearing from you."""
+cv_summary_1 = """
+Currently pursuing a Bachelor of Computer Science at the University of Waterloo with a specialization in Digital Hardware and a 3.9 GPA, 
+I am passionate about exploring opportunities in machine learning, data engineering, full-stack development, and cloud/back-end systems, 
+and am eager to rapidly learn and apply new technologies. As an Applications Development Intern at CJCR, Department of National Defence, 
+I contributed to Power Apps solutions integrating diverse data sources for dashboards, tracking systems, and asset management, 
+while developing features for a Vue.js web application and a .NET backend serving over 10,000 staff members. 
+At Ericsson, I served as a Software Testing Intern, monitoring Jenkins pipelines, troubleshooting Kubernetes clusters, and reporting insights through Grafana dashboards.
+"""
+cv_summary_2 = """
+My POS Ecosystem project demonstrates full-stack expertise, combining a React web dashboard and React Native mobile app for 
+real-time merchant management, inventory, and checkout, with FastAPI, PostgreSQL, Redis, and Celery, deployed via Azure App Service, Supabase, and DevOps pipelines. 
+Additionally, I built an Android system that overlays restrictions on apps and websites selected by the user, automatically enforcing schedules and limits to enhance focus and productivity.
+"""
 
 
 cv_skillset = """Technical Skills: Programming languages include Python, JavaScript, Kotlin, C, SQL, Bash, and Racket. 
 Frameworks include React, React Native, Vue.js, Jetpack Compose, FastAPI, Flask, .NET, and Celery. 
 Platforms and tools include Linux, GitHub, Docker, Jenkins, Supabase, PostgreSQL, Vercel, Render, Azure Suite, Microsoft Azure DevOps, Power Platform, and Azure App Service."""
 
-def makePrompt(job_text):
+def makePrompt(title, company, job_description, company_description):
     prompt_data = f"""
     You are a professional technical recruiter and resume writer.
 
@@ -44,8 +57,13 @@ def makePrompt(job_text):
     - Avoid vague phrases, soft HR-style content, or generic statements about company culture.
     - Focus on connecting your skills to the company’s requirements while emphasizing curiosity and willingness to grow.
 
-    JOB POSTING TEXT:
-    {job_text}
+    JOB POSTING TEXT: **MOST IMPORTANT AND RELEVANT**
+    {job_description}
+    
+    EXTRA INFO:
+    Title: {title}
+    Company: {company}
+    Company Description: {company_description}
 
     OUTPUT RULES:
     - The text must read like it was written by a human for this job. It should be indistinguishable from a human-written cover letter.
