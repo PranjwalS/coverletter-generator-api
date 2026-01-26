@@ -30,11 +30,10 @@ def crawler_linkedin(playwright, cookies):
     for geoID in geoIDs:
         for keyword in keywords:
             while True: # go thru all pages
-                page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r10800&keywords=%22{keyword}%22&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}")
+                page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r32400&keywords=%22{keyword}%22&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}")
                 try:
                     page.wait_for_selector('ul:has(li[data-occludable-job-id])', timeout=3000)
                 except:
-                    print(f"No jobs found for keyword '{keyword}' in geoID {geoID}")
                     break
                 
                 
@@ -65,6 +64,8 @@ def crawler_linkedin(playwright, cookies):
                     job_link = f"https://www.linkedin.com{job_link}" if job_link else None
 
                     job_cards.append((job_link,))
+                print("Job cards found:", job_cards)
+
                 index += 1
             index = 0
             time.sleep(2)
@@ -135,7 +136,7 @@ def crawler_linkedin(playwright, cookies):
 search_config = {
     "keywords": [
         'Fall 2026',
-        'Autumn 2026'
+        'Autumn 2026',
     ],
     "geoIDs": {
         "Canada": "101174742",

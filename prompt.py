@@ -45,7 +45,7 @@ def makePrompt(title, company, job_description, company_description):
     Paragraph 1 (Intro):
     - Show genuine interest in the role and the company.
     - Make it 2–3 sentences.
-    - Mention why the position excites you and aligns with your academic and career focus.
+    - Mention why the position excites you very very precisely, perhaps referring to the company description attached if needed.
 
     Paragraph 2 (Interest & Skill Alignment):
     - Highlight 1–2 responsibilities, technologies, or tools from the job posting in very short phrases (half a sentence max).
