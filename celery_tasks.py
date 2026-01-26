@@ -6,6 +6,14 @@ from openai import OpenAI
 from prompt import makePrompt, cv_summary_1, cv_summary_2, closing
 from celery.schedules import crontab
 from dotenv import load_dotenv
+from job_scoring_trial import calculate_job_score, THRESHOLD_PRE_CL
+
+## manual quick run code; 
+##      celery -A celery_tasks worker --loglevel=info --pool=solo
+## (in new terminal) python
+##                   from celery_tasks import enqueue_scoring_jobs
+##                   enqueue_scoring_jobs.delay()
+
 
 load_dotenv()
 
@@ -40,7 +48,7 @@ celery_app.conf.update(
     
     beat_schedule={
         "run-coverletter-pipeline-every-30-min": {
-            "task": "enqueue_coverletter_jobs",
+            "task": "enqueue_scoring_jobs",
             "schedule": crontab(minute="*/30"),         ### REMOVE BEAT, TOO MUCH COMMAND USAGE ON UPSTASH, AND INSTEAD DO SCRIPT RUNS FROM CRAWLER
         }
     }
@@ -49,8 +57,8 @@ celery_app.conf.update(
 
 
 
-@celery_app.task(name="enqueue_coverletter_jobs")
-def enqueue_coverletter_jobs():
+@celery_app.task(name="enqueue_scoring_jobs")
+def enqueue_scoring_jobs():
     jobs = supabase.table("jobs").select("*").limit(20).eq("processed_coverletter", False).execute()
     jobs = jobs.data or []
 
@@ -59,13 +67,27 @@ def enqueue_coverletter_jobs():
         return
 
     for job in jobs:
-        generate_coverletter.delay(job["id"])
+        job_scoring_task.delay(job["id"])
 
     first, last = jobs[0]["id"], jobs[-1]["id"]
     print(f'Enqueued jobs {first} to {last} at {datetime.now().strftime("%Y-%m-%d %H:%M")} ; {last-first} jobs done :)')
 
 
 
+@celery_app.task
+def job_scoring_task(job_id: int):
+    job_resp = supabase.table("jobs").select("*").eq("id", job_id).single().execute()
+    job = job_resp.data
+
+    result = calculate_job_score(job)
+    supabase.table("jobs").update({"score": result['final_score'], "score_breakdown": result['score_breakdown'], "scored_at": datetime.now().isoformat()}).eq("id", job["id"]).execute()
+
+    if result['final_score'] >= THRESHOLD_PRE_CL:
+        generate_coverletter.delay(job_id)
+    else:
+        return
+    
+    
 
 @celery_app.task(name = "coverletter_generator")
 def generate_coverletter(job_id):
@@ -100,3 +122,4 @@ def generate_coverletter(job_id):
     
     ## update db
     supabase.table("jobs").update({"processed_coverletter": True, "coverletter_text": final_output}).eq("id", job["id"]).execute()
+

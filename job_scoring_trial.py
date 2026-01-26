@@ -175,7 +175,7 @@ def load_company_databases():
 load_company_databases()
 
 
-def score_company(company: str, top_2k_companies: list, top_10k_companies: list) -> float:
+def score_company(company: str) -> float:
     # Clean company name
     company_clean = company.lower()
     for suffix in ['inc', 'llc', 'ltd', 'corp', 'incorporated', 'limited', '.']:
@@ -522,7 +522,7 @@ def calculate_job_score(job_data: dict) -> dict:
     scores = {
         'title_score': score_title(title),
         'employment_score': score_employment(title, tags, job_desc),
-        'company_score': score_company(company, top_2k_companies or [], top_10k_companies or []),
+        'company_score': score_company(company),
         'skill_match_score': score_skill_match(job_desc),
         'role_relevance_score': score_role_relevance(job_desc),
         'red_flag_penalty': score_red_flags(job_desc),
@@ -542,49 +542,4 @@ def calculate_job_score(job_data: dict) -> dict:
         'score_breakdown': scores,
     }
 
-
-# ==================== CELERY TASK STRUCTURE ====================
-
-# from celery import shared_task
-# 
-# @shared_task
-# def job_scoring_task(job_id: int):
-#     """
-#     Celery task to score a job and update database.
-#     
-#     Writes to DB:
-#     - score (float)
-#     - score_breakdown (JSON)
-#     - scored_at (timestamp)
-#     """
-#     
-#     # Fetch job from DB
-#     job_data = fetch_job_from_db(job_id)
-#     
-#     # Calculate score
-#     result = calculate_job_score(job_data)
-#     
-#     # Update DB
-#     update_job_score(
-#         job_id=job_id,
-#         score=result['final_score'],
-#         score_breakdown=result['score_breakdown']
-#     )
-#     
-#     return result
-
-
-from dotenv import load_dotenv
-from supabase import create_client
-import os
-
-load_dotenv()
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-jobs_test = supabase.table('jobs').select('*').execute()
-for job in jobs_test.data:
-    result = calculate_job_score(job)
-    supabase.table("jobs").update({"score": result['final_score'], "score_breakdown": result['score_breakdown'], "scored_at": datetime.now().isoformat()}).eq("id", job["id"]).execute()
+###
