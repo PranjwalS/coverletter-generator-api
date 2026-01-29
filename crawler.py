@@ -22,8 +22,8 @@ def crawler_linkedin(playwright, cookies):
     context.add_cookies(cookies)
     page = context.new_page()
     job_cards = []
-    job_details = []
-    
+    job_count = 0
+        
     keywords = search_config.get("keywords")
     geoIDs = list(search_config["geoIDs"].values())
     index = 0
@@ -72,10 +72,15 @@ def crawler_linkedin(playwright, cookies):
 
     ## remove duplicates
         # scrape link by link
-
+    time.sleep(10)
     response = supabase.table("jobs").select("url").execute()
     existing_urls = set(row["url"] for row in response.data)
 
+    page = context.new_page()
+    page.set_default_navigation_timeout(300000)  # 5 min
+    page.set_default_timeout(120000)     
+    
+    
     for link in job_cards:
         if link[0] in existing_urls:
             continue
@@ -85,7 +90,7 @@ def crawler_linkedin(playwright, cookies):
         item = {}
 
         job_container = page.locator(".job-view-layout.jobs-details").first
-        job_container.wait_for(timeout=5000)
+        job_container.wait_for(timeout=10000)
         
         
         title_locator = job_container.locator(".job-details-jobs-unified-top-card__job-title > h1")
@@ -119,24 +124,21 @@ def crawler_linkedin(playwright, cookies):
         item["company_desc"] = company_desc_text
         item["url"] = link[0]
         item["scraped_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-        job_details.append(item)
+        supabase.table("jobs").insert(item).execute()
+        job_count += 1
         time.sleep(1)
-    
-    
-    # batch send to db
-    if job_details:
-        response = supabase.table("jobs").insert(job_details).execute()
-
+            
 
 
     browser.close()  
-    return("success", len(job_details))  
+    return("success", job_count)
 
 
 search_config = {
     "keywords": [
         'Fall 2026',
         'Autumn 2026',
+    
     ],
     "geoIDs": {
         "Canada": "101174742",

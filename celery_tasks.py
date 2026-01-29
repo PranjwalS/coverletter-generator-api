@@ -59,7 +59,7 @@ celery_app.conf.update(
 
 @celery_app.task(name="enqueue_scoring_jobs")
 def enqueue_scoring_jobs():
-    jobs = supabase.table("jobs").select("*").limit(20).eq("processed_coverletter", False).execute()
+    jobs = supabase.table("jobs").select("*").eq("processed_coverletter", False).is_("scored_at", "null").range(0, 10000).execute()
     jobs = jobs.data or []
 
     if not jobs:
@@ -83,8 +83,10 @@ def job_scoring_task(job_id: int):
     supabase.table("jobs").update({"score": result['final_score'], "score_breakdown": result['score_breakdown'], "scored_at": datetime.now().isoformat()}).eq("id", job["id"]).execute()
 
     if result['final_score'] >= THRESHOLD_PRE_CL:
-        generate_coverletter.delay(job_id)
+        print(f"Generating coverletter for job {job_id} with score {result['final_score']}")
+        # generate_coverletter.delay(job_id)
     else:
+        print(f"Skipping job {job_id} with score {result['final_score']}")
         return
     
     
