@@ -65,6 +65,8 @@ def enqueue_scoring_jobs():
     if not jobs:
         print(f'No jobs pending coverletter generation at {datetime.now().strftime("%Y-%m-%d %H:%M")}')
         return
+    
+
 
     for job in jobs:
         job_scoring_task.delay(job["id"])
