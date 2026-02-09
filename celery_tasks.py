@@ -3,7 +3,7 @@ from supabase import create_client
 import os
 from datetime import datetime
 from openai import OpenAI
-from prompt import makePrompt, cv_summary_1, cv_summary_2, closing
+from app.prompt import makePrompt, cv_summary_1, cv_summary_2, closing
 from celery.schedules import crontab
 from dotenv import load_dotenv
 from job_scoring_trial import calculate_job_score, THRESHOLD_PRE_CL

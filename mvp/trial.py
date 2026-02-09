@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 import requests
 from dotenv import load_dotenv
 import os
-from prompt import makePrompt
+from app.prompt import makePrompt
 from openai import OpenAI
 
 

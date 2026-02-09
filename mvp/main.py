@@ -6,10 +6,10 @@ from reportlab.lib.pagesizes import LETTER
 from reportlab.pdfgen import canvas
 from bs4 import BeautifulSoup
 # from selenium import webdriver
-from pdf_generator import make_pdf
+from app.pdf_generator import make_pdf
 from dotenv import load_dotenv
 import os
-from prompt import makePrompt
+from app.prompt import makePrompt
 from openai import OpenAI
 
 app = FastAPI()
