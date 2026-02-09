@@ -102,11 +102,11 @@ def make_pdf(ai_text, buffer, filename="coverletter.pdf"):
         y -= line_height 
     
    
-    y = draw_justified_paragraph(cv_summary_1, left_margin, y, max_width)
-    y -= 10
-    y = draw_justified_paragraph(cv_summary_2, left_margin, y, max_width)
-    y -= line_height
-    y = draw_justified_paragraph(closing, left_margin, y, max_width)
+    # y = draw_justified_paragraph(cv_summary_1, left_margin, y, max_width)
+    # y -= 10
+    # y = draw_justified_paragraph(cv_summary_2, left_margin, y, max_width)
+    # y -= line_height
+    # y = draw_justified_paragraph(closing, left_margin, y, max_width)
     
     c.showPage()
     c.save()
