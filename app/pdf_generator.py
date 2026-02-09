@@ -4,6 +4,8 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
 from reportlab.lib.units import inch
 import os
+from io import BytesIO
+
 
 closing = """Thank you for your time and consideration. I would greatly appreciate the opportunity to further discuss how my interests and experiences align with this role and how I could contribute to your team. I can be reached at 438-773-4010 or singhpranjwal@gmail.com, and I look forward to hearing from you."""
 cv_summary_1 = """
@@ -19,7 +21,7 @@ My POS Ecosystem project demonstrates full-stack expertise, combining a React we
 real-time merchant management, inventory, and checkout, with FastAPI, PostgreSQL, Redis, and Celery, deployed via Azure App Service, Supabase, and DevOps pipelines. 
 Additionally, I built an Android system that overlays restrictions on apps and websites selected by the user, automatically enforcing schedules and limits to enhance focus and productivity.
 """
-def make_pdf(ai_text, filename="coverletter.pdf"):
+def make_pdf(ai_text, buffer, filename="coverletter.pdf"):
     font_path = os.path.join(os.path.dirname(__file__), 'fonts', 'cmunrm.ttf')
     
     if not os.path.exists(font_path):
@@ -28,7 +30,7 @@ def make_pdf(ai_text, filename="coverletter.pdf"):
     
     pdfmetrics.registerFont(TTFont('CMR', font_path))
     
-    c = canvas.Canvas(filename, pagesize=LETTER)
+    c = canvas.Canvas(buffer, pagesize=LETTER)
     width, height = LETTER
     
     c.setFont('CMR', 10)
@@ -108,4 +110,5 @@ def make_pdf(ai_text, filename="coverletter.pdf"):
     
     c.showPage()
     c.save()
-    print(f"PDF saved as {filename}")
+    # print(f"PDF saved as {filename}")
+    buffer.seek(0)
