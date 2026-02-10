@@ -18,7 +18,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_ORIGIN],
+    allow_origins=[FRONTEND_ORIGIN, "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,7 +27,7 @@ app.add_middleware(
 #### Classes
 class TextData(BaseModel):
     content:str
-    title:str
+    # title:str
     
 
 #### Endpoints GET
@@ -35,39 +35,23 @@ class TextData(BaseModel):
 def root():
     return "<h1>FastAPI server is running ✅</h1>"
 
+@app.get("/download-cv")
+def download_cv():
+    cv_path = os.path.join(os.path.dirname(__file__), "static", "cv_2026.pdf")
+    if not os.path.exists(cv_path):
+        return {"error": "CV not found"}
+    return FileResponse(cv_path, media_type="application/pdf", filename="CV_Pranjwal_Singh.pdf")
+
+
 
 
 
 #### Endpoints POST
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from io import BytesIO
-from pdf_generator import make_pdf
-import os
-
-app = FastAPI()
-
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "*")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[FRONTEND_ORIGIN],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-class TextData(BaseModel):
-    content: str
-    title: str
-
 @app.post("/coverletter-text")
 def coverletter_text_input(data: TextData):
     buffer = BytesIO()
-    filename = f"{data.title}.pdf"
-
+    # filename = f"{data.title}.pdf"
+    filename = "Coverletter_Pranjwal_Singh"
     make_pdf(data.content, buffer, filename)
     buffer.seek(0)  # important
 
