@@ -37,7 +37,7 @@ def root():
 
 @app.get("/download-cv")
 def download_cv():
-    cv_path = os.path.join(os.path.dirname(__file__), "static", "cv_2026.pdf")
+    cv_path = os.path.join(os.path.dirname(__file__), "static", "Pranjwal_Singh_CV.pdf")
     if not os.path.exists(cv_path):
         return {"error": "CV not found"}
     return FileResponse(cv_path, media_type="application/pdf", filename="CV_Pranjwal_Singh.pdf")
