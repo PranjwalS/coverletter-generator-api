@@ -6,7 +6,7 @@ from openai import OpenAI
 from app.prompt import makePrompt, cv_summary_1, cv_summary_2, closing
 from celery.schedules import crontab
 from dotenv import load_dotenv
-from job_scoring_trial import calculate_job_score, THRESHOLD_PRE_CL
+from app.job_scoring_trial import calculate_job_score, THRESHOLD_PRE_CL
 
 ## manual quick run code; 
 ##      celery -A celery_tasks worker --loglevel=info --pool=solo
