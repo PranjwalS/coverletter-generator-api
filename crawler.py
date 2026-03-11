@@ -80,6 +80,11 @@ def crawler_linkedin(playwright, cookies):
     page.set_default_navigation_timeout(300000)  # 5 min
     page.set_default_timeout(120000)     
     
+    
+    
+    
+    #############
+####    ########## imrpoved the scraping stuff, gotta fix endpoints tho since it generaes coverltter unnecceaseilry and also just clean up the keywords , empty db and rerun all, put job scoring into scraping tho
     for link in job_cards:
         if link[0] in existing_urls:
             continue
@@ -179,54 +184,7 @@ def crawler_linkedin(playwright, cookies):
         time.sleep(1)
 
 
-    # for link in job_cards:
-    #     if link[0] in existing_urls:
-    #         continue
-        
-    #     page.goto(f"{link[0]}")
-    #     time.sleep(1)
-    #     item = {}
-    #     with open("debug_page.html", "w", encoding="utf-8") as f:
-    #         f.write(page.content())
-    #     job_container = page.locator(".job-view-layout.jobs-details").first
-    #     job_container.wait_for(timeout=10000)
-        
-        
-    #     title_locator = job_container.locator(".job-details-jobs-unified-top-card__job-title > h1")
-    #     job_title = title_locator.first.inner_text() if title_locator.count() > 0 else ""
 
-    #     company_locator = job_container.locator(".job-details-jobs-unified-top-card__company-name > a") 
-    #     company_title = company_locator.first.inner_text() if company_locator.count() > 0 else ""
-        
-    #     location_locator = job_container.locator(".job-details-jobs-unified-top-card__primary-description-container >> span.tvm__text--low-emphasis")
-    #     location_title = location_locator.first.inner_text() if location_locator.count() > 0 else ""
-
-    #     tags_locator = job_container.locator(".job-details-fit-level-preferences >> span.tvm__text--low-emphasis")
-    #     tags_text = [tag.inner_text().strip() for tag in tags_locator.all()]
-        
-    #     apply_locator = job_container.locator(".jobs-apply-button--top-card >> span.artdeco-button__text")
-    #     apply_text = apply_locator.first.inner_text() if apply_locator else ""
-        
-    #     job_desc_locator = page.locator("article.jobs-description__container #job-details")
-    #     job_desc_text = job_desc_locator.first.inner_text() if job_desc_locator else ""
-
-    #     company_desc_locator = job_container.locator(".jobs-company__box >> p.jobs-company__company-description.text-body-small-open")
-    #     company_desc_text = company_desc_locator.first.inner_text() if company_desc_locator else ""
-
-        
-    #     item["title"] = job_title
-    #     item["company"] = company_title
-    #     item["location"] = location_title
-    #     item["tags"] = tags_text
-    #     item["apply_type"] = apply_text
-    #     item["job_desc"] = job_desc_text
-    #     item["company_desc"] = company_desc_text
-    #     item["url"] = link[0]
-    #     item["scraped_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
-    #     supabase.table("jobs").insert(item).execute()
-    #     job_count += 1
-    #     time.sleep(1)
-            
 
 
     browser.close()  
@@ -255,4 +213,4 @@ with sync_playwright() as playwright:
 print("Script finished at:", datetime.now())
 
 
-("Fall 2026" OR "2026 Fall") AND ("software" OR "developer" OR "cs" OR "data" OR "ai" OR "ml" OR "hardware" OR "mobile") NOT ("Summer 2026" OR "2026 Summer" OR "Summer/Fall" OR "July" OR "May")
+# ("Fall 2026" OR "2026 Fall") AND ("software" OR "developer" OR "cs" OR "data" OR "ai" OR "ml" OR "hardware" OR "mobile") NOT ("Summer 2026" OR "2026 Summer" OR "Summer/Fall" OR "July" OR "May")
