@@ -1,3 +1,6 @@
+// Runs inside the tab, touches the page DOM
+
+
 const inputs = document.querySelectorAll("input, textarea");
 
 inputs.forEach(input => {

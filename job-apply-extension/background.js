@@ -1,3 +1,6 @@
+// Persistent logic, API calls, message routing
+
+
 document.getElementById("autofill").onclick = () => {
 
   chrome.tabs.query({active:true,currentWindow:true}, tabs => {
