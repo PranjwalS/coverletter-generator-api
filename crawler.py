@@ -213,4 +213,3 @@ with sync_playwright() as playwright:
 print("Script finished at:", datetime.now())
 
 
-# ("Fall 2026" OR "2026 Fall") AND ("software" OR "developer" OR "cs" OR "data" OR "ai" OR "ml" OR "hardware" OR "mobile") NOT ("Summer 2026" OR "2026 Summer" OR "Summer/Fall" OR "July" OR "May")
