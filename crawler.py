@@ -30,7 +30,7 @@ def crawler_linkedin(playwright, cookies):
     for geoID in geoIDs:
         for keyword in keywords:
             while True: # go thru all pages
-                page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r8640000&keywords={keyword}&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}") 
+                page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r86400&keywords={keyword}&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}") 
                 try:
                     page.wait_for_selector('ul:has(li[data-occludable-job-id])', timeout=3000)
                 except:
@@ -106,13 +106,24 @@ def crawler_linkedin(playwright, cookies):
         job_title = parts[0] if len(parts) > 0 else ""
         company_title = parts[1] if len(parts) > 1 else ""
 
-        # --- LOCATION: always "CompanyName\n<location> ·" in rendered text ---
+        # --- LOCATION: extract from the job alert text which is always "{title}, {location}" ---
         location_title = ""
         try:
-            after_company = full_text.split(company_title, 1)[1]
-            candidate = after_company.strip().splitlines()[0].split("·")[0].strip()
-            if candidate and len(candidate) < 80:
-                location_title = candidate
+            alert_section = page.locator('h2:has-text("Set alert for similar jobs")')
+            if alert_section.count() > 0:
+                for levels in range(1, 8):
+                    xpath = "/".join([".."] * levels)
+                    container = alert_section.locator(f"xpath={xpath}")
+                    if container.count() == 0:
+                        continue
+                    alert_p = container.locator("p").first
+                    if alert_p.count() > 0:
+                        alert_text = alert_p.inner_text().strip()
+                        # format is always "Job Title, City, State, Country"
+                        # strip the job title prefix off the front
+                        if "," in alert_text:
+                            location_title = alert_text.split(",", 1)[1].strip()
+                        break
         except:
             pass
 
@@ -170,6 +181,17 @@ def crawler_linkedin(playwright, cookies):
             if t in full_text and t not in tags_text:
                 tags_text.append(t)
 
+        # Salary detection - look for $X/hr, $X/yr, $XK patterns
+        import re
+        salary_matches = re.findall(r'\$[\d,]+(?:\.\d+)?(?:/hr|/yr|K)?(?:\s*[-–]\s*\$[\d,]+(?:\.\d+)?(?:/hr|/yr|K)?)?', full_text)
+        if salary_matches:
+            # take the first clean match, dedupe
+            for s in salary_matches:
+                s = s.strip()
+                if s and s not in tags_text:
+                    tags_text.append(s)
+                    break  # just first salary mention is enough
+
         item["title"] = job_title
         item["company"] = company_title
         item["location"] = location_title
@@ -193,7 +215,7 @@ def crawler_linkedin(playwright, cookies):
 
 search_config = {
     "keywords": [
-        '("Fall 2026" OR "2026 Fall") AND ("computer science" OR "computer" OR "programmer" OR "coder" OR "software" OR "developer" OR "cs" OR "data" OR "ai" OR "ml" OR "hardware" OR "mobile") NOT ("Summer 2026" OR "2026 Summer" OR "Summer/Fall" OR "July" OR "May")',
+        '("Fall 2026" OR "2026 Fall") AND ("computer science" OR "computer" OR "it" OR "programmer" OR "coder" OR "software" OR "developer" OR "cs" OR "data" OR "ai" OR "ml" OR "hardware" OR "mobile") NOT ("Summer 2026" OR "2026 Summer" OR "Summer/Fall" OR "July" OR "May")',
         # '("Autumn 2026") AND (intern OR internship OR "co-op" OR coop) AND (software OR backend OR frontend OR "full stack" OR mobile)'
     ],
     "geoIDs": {
