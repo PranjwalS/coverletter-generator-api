@@ -1,19 +1,21 @@
 ## Core remaining pillars
 
 ``` 
- ❌ Alerting — send email summary after every crawler run with list of newly scraped jobs
+ ✅ Alerting — send email summary after every crawler run with list of newly scraped jobs
  ❌ Applied jobs secondary dashboard — separate view showing only applied jobs
  ❌ Feedback loop column in DB + dropdown on frontend (interview / rejected / ghosted / offer)
 
 
- ❌ Chrome extension autofill refinement
+ ❌ Chrome extension autofill refinement: integrate LLM with json output
  ❌ Apply bot — multi-step automation for a few actions
- ❌ UI general polish
+ ❌ UI general polish; finalize both dashboards
  ❌ Scoring logic improvements
  ❌ Expand to more job boards (Indeed, Glassdoor etc)
- ❌ Job deduplication across boards when you expand (fuzzy match on title+company+location)
+ ❌ Job deduplication across boards when expand (fuzzy match on title+company+location)
+ ❌ Put the crawler as a celery task instead
 
-
+ ❌ Clean up all the code in the repo and reorganize everything, cut out unneccessary, absorb the frontend into this repo.
+ ❌ Make readme.md properly and just document all.
  ❌ Supabase production setup
  ❌ Azure App Service for backend
  ❌ Vercel for frontend
