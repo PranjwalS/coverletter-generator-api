@@ -7,6 +7,8 @@ from datetime import datetime
 import time
 from supabase import create_client
 
+from app.email_service import send_email
+
 print("Script started at:", datetime.now())
 
 load_dotenv()
@@ -81,7 +83,7 @@ def crawler_linkedin(playwright, cookies):
     page.set_default_timeout(120000)     
     
     
-    
+    new_jobs = []
     
     #############
 ####    ########## imrpoved the scraping stuff, gotta fix endpoints tho since it generaes coverltter unnecceaseilry and also just clean up the keywords , empty db and rerun all, put job scoring into scraping tho
@@ -203,13 +205,52 @@ def crawler_linkedin(playwright, cookies):
         item["scraped_at"] = datetime.now().strftime("%Y-%m-%d %H:%M")
         supabase.table("jobs").insert(item).execute()
         job_count += 1
+        new_jobs.append({'title': job_title, 'company': company_title})
         time.sleep(1)
 
 
 
+    if new_jobs:
+        rows = "\n".join([
+            f"""
+            <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">{j['title']}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #666;">{j['company']}</td>
+            </tr>
+            """
+            for j in new_jobs
+        ])
 
+        body = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+            <h2 style="color: #1a1a1a; margin-bottom: 4px;">Crawler Run Complete</h2>
+            <p style="color: #666; margin-top: 0;">{len(new_jobs)} new job{'s' if len(new_jobs) != 1 else ''} found</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+                <thead>
+                    <tr style="background: #f5f5f5;">
+                        <th style="padding: 10px 12px; text-align: left; font-size: 13px; color: #888; font-weight: 600;">TITLE</th>
+                        <th style="padding: 10px 12px; text-align: left; font-size: 13px; color: #888; font-weight: 600;">COMPANY</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows}
+                </tbody>
+            </table>
+
+            <p style="color: #aaa; font-size: 12px; margin-top: 24px;">
+                Scraped at {datetime.now().strftime("%Y-%m-%d %H:%M")}
+            </p>
+        </div>
+        """
+        send_email(
+            subject=f"🔍 {len(new_jobs)} new job{'s' if len(new_jobs) != 1 else ''} found",
+            body=body,
+            html=True
+        )
 
     browser.close()  
+
     return("success", job_count)
 
 
