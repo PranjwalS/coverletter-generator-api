@@ -2,8 +2,8 @@
 
 ``` 
  ✅ Alerting — send email summary after every crawler run with list of newly scraped jobs
- ❌ Applied jobs secondary dashboard — separate view showing only applied jobs
- ❌ Feedback loop column in DB + dropdown on frontend (interview / rejected / ghosted / offer)
+ ✅ Applied jobs secondary dashboard — separate view showing only applied jobs
+ ✅ Feedback loop column in DB + dropdown on frontend (interview / rejected / ghosted / offer)
 
 
  ❌ Chrome extension autofill refinement: integrate LLM with json output
