@@ -7,6 +7,7 @@
 
 
  ✅ Chrome extension autofill refinement: integrate LLM with json output (NOT DOING LLM, waste of time, only for custom questions later.)
+ ❌ improve the extension with right click LLM call for long answers and try to expand the autofill with "browser-use" at https://github.com/browser-use/browser-use
  ❌ Apply bot — multi-step automation for a few actions
  ❌ UI general polish; finalize both dashboards
  ❌ Scoring logic improvements

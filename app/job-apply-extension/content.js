@@ -117,6 +117,12 @@ function fillPage(data) {
       fillRadio(selector, value);
     } else {
       fillInput(el, value);
+      // if it looks like a custom dropdown, also try clicking options
+      if (el.getAttribute("role") === "combobox" || 
+          el.getAttribute("aria-haspopup") === "listbox" ||
+          el.classList.toString().toLowerCase().includes("select")) {
+        fillCustomDropdown(el, value);
+      }
     }
   });
 }
