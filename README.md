@@ -6,7 +6,7 @@
  ✅ Feedback loop column in DB + dropdown on frontend (interview / rejected / ghosted / offer)
 
 
- ❌ Chrome extension autofill refinement: integrate LLM with json output
+ ✅ Chrome extension autofill refinement: integrate LLM with json output (NOT DOING LLM, waste of time, only for custom questions later.)
  ❌ Apply bot — multi-step automation for a few actions
  ❌ UI general polish; finalize both dashboards
  ❌ Scoring logic improvements
