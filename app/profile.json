@@ -1,0 +1,119 @@
+{
+  "personal": {
+    "first_name": "Pranjwal",
+    "last_name": "Singh",
+    "full_name": "Pranjwal Singh",
+    "email": "singhpranjwal@gmail.com",
+    "phone": "4387734010",
+    "phone_formatted": "+1 (438) 773-4010",
+    "date_of_birth": "29-05-2007",
+    "gender": "Male",
+    "pronouns": "He/Him"
+  },
+
+  "location": {
+    "address_line_1": "18 James St",
+    "address_line_2": "",
+    "city": "Waterloo",
+    "province_state": "Ontario",
+    "province_state_code": "ON",
+    "country": "Canada",
+    "country_code": "CA",
+    "postal_code": "N2J2S9",
+    "timezone": "America/Toronto"
+  },
+
+  "identity": {
+    "citizenship": "Canadian Citizen",
+    "work_authorization_canada": "yes",
+    "work_authorization_us": "no",
+    "requires_sponsorship": "yes",
+    "ethnicity": "Asian",
+    "veteran_status": "no",
+    "disability_status": "no"
+  },
+
+  "professional": {
+    "current_title": "Software Developer",
+    "years_of_experience": "2",
+    "employment_type_preferred": "Full-time",
+    "work_arrangement_preferred": "Hybrid",
+    "willing_to_relocate": "no",
+    "salary_expectation_cad": "",
+    "salary_expectation_usd": "",
+    "notice_period": "2 weeks",
+    "linkedin": "https://linkedin.com/in/pranjwalsingh",
+    "github": "https://github.com/pranjwalsingh",
+    "portfolio": "",
+    "website": ""
+  },
+
+  "education": [
+    {
+      "institution": "",
+      "degree": "Bachelor of Computer Science",
+      "degree_short": "B.CS",
+      "field_of_study": "Computer Science",
+      "graduation_year": "2025",
+      "graduation_month": "",
+      "gpa": "",
+      "currently_enrolled": "no"
+    }
+  ],
+
+  "experience": [
+    {
+      "company": "",
+      "title": "",
+      "start_date": "",
+      "end_date": "",
+      "current": "no",
+      "description": ""
+    }
+  ],
+
+  "skills": {
+    "languages": ["Python", "JavaScript", "TypeScript", "SQL"],
+    "frameworks": ["FastAPI", "React", "Node.js", "Next.js"],
+    "tools": ["Docker", "Git", "PostgreSQL", "Redis", "Celery"],
+    "cloud": ["AWS", "Azure", "Vercel"],
+    "other": []
+  },
+
+  "application_essays": {
+    "why_this_company": "I'm excited about opportunities where I can work on meaningful products at scale. I enjoy working in fast-paced environments where I can contribute across the full stack.",
+    "greatest_strength": "My ability to break down complex problems and build practical, scalable solutions. I'm also a quick learner who adapts well to new tech stacks.",
+    "greatest_weakness": "I sometimes spend too much time optimizing code before shipping — I've been actively working on balancing perfectionism with delivery speed.",
+    "tell_me_about_yourself": "I'm a software developer with experience building full-stack web applications. I enjoy working on backend systems, APIs, and automation tooling. Currently I'm based in Waterloo, Ontario and looking for new opportunities.",
+    "career_goals": "I want to grow as an engineer, work on impactful products, and eventually take on more technical leadership responsibility.",
+    "how_did_you_hear": "Online job board",
+    "cover_letter_opening": "I'm excited to apply for this position. With my background in software development and a strong interest in building scalable systems, I believe I'd be a great fit for your team.",
+    "additional_info": ""
+  },
+
+  "references": {
+    "available_on_request": "yes",
+    "reference_1": {
+      "name": "",
+      "title": "",
+      "company": "",
+      "email": "",
+      "phone": "",
+      "relationship": ""
+    }
+  },
+
+  "documents": {
+    "resume_filename": "Pranjwal_Singh_Resume.pdf",
+    "cover_letter_filename": "Pranjwal_Singh_CoverLetter.pdf"
+  },
+
+  "preferences": {
+    "contact_preference": "email",
+    "available_start_date": "Immediately",
+    "part_time_available": "no",
+    "contract_available": "yes",
+    "internship_available": "no",
+    "remote_only": "no"
+  }
+}

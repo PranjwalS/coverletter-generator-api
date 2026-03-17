@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 import os
 from pydantic import BaseModel
+from autofill import USER_PROFILE, AutofillRequest, AutofillResponse, rule_based_fill
 from pdf_generator import make_pdf
 from dotenv import load_dotenv
 from prompt import makePrompt
@@ -114,3 +115,9 @@ def coverletter_text_input(data: TextData):
             "Content-Disposition": f'attachment; filename="{filename}"'
         },
     )
+
+
+@app.post("/autofill", response_model=AutofillResponse)
+async def autofill(req: AutofillRequest):
+    fill_map = rule_based_fill(req.fields, USER_PROFILE)
+    return AutofillResponse(fill_map=fill_map)
