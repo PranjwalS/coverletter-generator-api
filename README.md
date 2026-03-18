@@ -10,9 +10,8 @@
  ❌ improve the extension with right click LLM call for long answers and try to expand the autofill with "browser-use" at https://github.com/browser-use/browser-use
  ❌ Apply bot — multi-step automation for a few actions
  ❌ UI general polish; finalize both dashboards
- ❌ Scoring logic improvements
- ❌ Expand to more job boards (Indeed, Glassdoor etc)
- ❌ Job deduplication across boards when expand (fuzzy match on title+company+location)
+ ✅ Scoring logic improvements
+ ✅ Expand to more job boards (Indeed, Glassdoor etc) - NO NEED, mediocre results from Greenhouse and indeed.
  ❌ Put the crawler as a celery task instead
 
  ❌ Clean up all the code in the repo and reorganize everything, cut out unneccessary, absorb the frontend into this repo.

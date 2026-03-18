@@ -37,7 +37,7 @@ def crawler_linkedin(playwright, cookies):
     for geoID in geoIDs:
         for keyword in keywords:
             while True: # go thru all pages
-                page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r86400&keywords={keyword}&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}") 
+                page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r8640000&keywords={keyword}&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}") 
                 try:
                     page.wait_for_selector('ul:has(li[data-occludable-job-id])', timeout=3000)
                 except:
@@ -83,7 +83,7 @@ def crawler_linkedin(playwright, cookies):
         #
         #
 
-        
+
 
 
 
@@ -286,15 +286,15 @@ def crawler_linkedin(playwright, cookies):
 search_config = {
     
     "keywords": [
-        '("Fall 2026" OR "2026 Fall") AND ("computer science" OR "computer" OR "it" OR "programmer" OR "coder" OR "software" OR "developer" OR "cs" OR "data" OR "ai" OR "ml" OR "hardware" OR "mobile") NOT ("Summer 2026" OR "2026 Summer" OR "Summer/Fall" OR "July" OR "May")',
-        '("Autumn 2026") AND (intern OR internship OR "co-op" OR coop) AND (software OR backend OR frontend OR "full stack" OR mobile)'
+        '("Fall 2026" OR "2026 Fall") AND ("computer science" OR "computer" OR "machine learning" OR "it" OR "programmer" OR "coder" OR "software" OR "developer" OR "cs" OR "data" OR "ai" OR "ml" OR "hardware" OR "mobile") NOT ("Summer 2026" OR "2026 Summer" OR "Summer/Fall" OR "July" OR "May")',
+        # '("Autumn 2026") AND (intern OR internship OR "co-op" OR coop) AND (software OR backend OR frontend OR "full stack" OR mobile)'
     ],
     "geoIDs": {
         "Canada": "101174742",
-        "Germany": "101282230",
+        # "Germany": "101282230",
         "USA": "103644278",
-        "Singapore": "102454443",
-        "Japan": "101355337",
+        # "Singapore": "102454443",
+        # "Japan": "101355337",
     }
 }
     
