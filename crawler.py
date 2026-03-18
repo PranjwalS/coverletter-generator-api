@@ -26,6 +26,11 @@ def crawler_linkedin(playwright, cookies):
     job_cards = []
     job_count = 0
         
+    #### LINKEDIN SECTION BELOW
+    #
+    #
+    #
+    #
     keywords = search_config.get("keywords")
     geoIDs = list(search_config["geoIDs"].values())
     index = 0
@@ -71,6 +76,30 @@ def crawler_linkedin(playwright, cookies):
                 index += 1
             index = 0
             time.sleep(2)
+                ##########
+        
+        #### INDEED section below
+        #
+        #
+        #
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     ## remove duplicates
         # scrape link by link
@@ -255,6 +284,7 @@ def crawler_linkedin(playwright, cookies):
 
 
 search_config = {
+    
     "keywords": [
         '("Fall 2026" OR "2026 Fall") AND ("computer science" OR "computer" OR "it" OR "programmer" OR "coder" OR "software" OR "developer" OR "cs" OR "data" OR "ai" OR "ml" OR "hardware" OR "mobile") NOT ("Summer 2026" OR "2026 Summer" OR "Summer/Fall" OR "July" OR "May")',
         '("Autumn 2026") AND (intern OR internship OR "co-op" OR coop) AND (software OR backend OR frontend OR "full stack" OR mobile)'
