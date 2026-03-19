@@ -6,11 +6,10 @@ from dotenv import load_dotenv
 from datetime import datetime
 import time
 from supabase import create_client
-
 from app.email_service import send_email
 
-print("Script started at:", datetime.now())
 
+print("Script started at:", datetime.now())
 load_dotenv()
 HEADLESS = bool(os.getenv("HEADLESS"))
 # Connect to Supabase Postgres
@@ -298,10 +297,7 @@ search_config = {
     }
 }
     
-with sync_playwright() as playwright:
-    with open("secrets/linkedin_cookies.json", "r") as f:
-        cookies = json.load(f)
-    print(crawler_linkedin(playwright, cookies))
+
     
 print("Script finished at:", datetime.now())
 

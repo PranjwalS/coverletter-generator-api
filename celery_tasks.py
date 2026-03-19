@@ -1,4 +1,7 @@
+import json
+
 from celery import Celery
+from playwright.sync_api import sync_playwright
 from supabase import create_client
 import os
 from datetime import datetime
@@ -7,6 +10,7 @@ from app.prompt import makePrompt, cv_summary_1, cv_summary_2, closing
 from celery.schedules import crontab
 from dotenv import load_dotenv
 from app.job_scoring_trial import calculate_job_score, THRESHOLD_PRE_CL
+from crawler import crawler_linkedin
 
 ## manual quick run code; 
 ##      celery -A celery_tasks worker --loglevel=info --pool=solo
@@ -50,7 +54,12 @@ celery_app.conf.update(
         "run-coverletter-pipeline-every-30-min": {
             "task": "enqueue_scoring_jobs",
             "schedule": crontab(minute="*/30"),         ### REMOVE BEAT, TOO MUCH COMMAND USAGE ON UPSTASH, AND INSTEAD DO SCRIPT RUNS FROM CRAWLER
+        },
+        "run-scraper-pipeline-every-4-hour": {
+            "task": "scraper_scheduled",
+            "schedule": crontab(minut="*/120"),
         }
+        
     }
 )
 
@@ -127,3 +136,11 @@ def generate_coverletter(job_id):
     ## update db
     supabase.table("jobs").update({"processed_coverletter": True, "coverletter_text": final_output}).eq("id", job["id"]).execute()
 
+
+
+@celery_app.task(name = "scraper_scheduled")
+def scheduled_scraper_run():
+    with sync_playwright() as playwright:
+        with open("secrets/linkedin_cookies.json", "r") as f:
+            cookies = json.load(f)
+    print(crawler_linkedin(playwright, cookies))
