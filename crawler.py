@@ -77,30 +77,9 @@ def crawler_linkedin(playwright, cookies):
             time.sleep(2)
                 ##########
         
-        #### INDEED section below
-        #
-        #
-        #
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    ## remove duplicates
+    
+    
+       ## remove duplicates
         # scrape link by link
     time.sleep(10)
     response = supabase.table("jobs").select("url").execute()
@@ -285,15 +264,16 @@ def crawler_linkedin(playwright, cookies):
 search_config = {
     
     "keywords": [
-        '("Fall 2026" OR "2026 Fall") AND ("computer science" OR "computer" OR "machine learning" OR "it" OR "programmer" OR "coder" OR "software" OR "developer" OR "cs" OR "data" OR "ai" OR "ml" OR "hardware" OR "mobile") NOT ("Summer 2026" OR "2026 Summer" OR "Summer/Fall" OR "July" OR "May")',
+        '("fall" OR "sept" OR "september" OR "autumn") AND "2026" AND ("computer science" OR "computer" OR "machine learning" OR "it" OR "programmer" OR "coder" OR "software" OR "developer" OR "cs" OR "data" OR "ai" OR "ml" OR "hardware" OR "mobile") NOT ("Summer 2026" OR "2026 Summer" OR "Summer/Fall" OR "July" OR "May")',
         # '("Autumn 2026") AND (intern OR internship OR "co-op" OR coop) AND (software OR backend OR frontend OR "full stack" OR mobile)'
     ],
     "geoIDs": {
-        "Canada": "101174742",
+        # "Canada": "101174742",
         # "Germany": "101282230",
         "USA": "103644278",
         # "Singapore": "102454443",
         # "Japan": "101355337",
+        # "UK": "101165590",
     }
 }
     
@@ -302,3 +282,7 @@ search_config = {
 print("Script finished at:", datetime.now())
 
 
+with sync_playwright() as playwright:
+    with open("secrets/linkedin_cookies.json", "r") as f:
+        cookies = json.load(f)
+    print(crawler_linkedin(playwright, cookies))

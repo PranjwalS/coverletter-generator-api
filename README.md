@@ -11,14 +11,15 @@
  ❌ Apply bot — multi-step automation for a few actions
  ✅ Scoring logic improvements
  ✅ Expand to more job boards (Indeed, Glassdoor etc) - NO NEED, mediocre results from Greenhouse and indeed.
- ❌ UI general polish; finalize both dashboards
- ❌ Put the crawler as a celery task instead
+ ✅ Put the crawler as a celery task instead
 
+ ❌ UI general polish; finalize both dashboards
+ ❌ Upstash setup AND PUT CELERY ON ORACLE VM
  ❌ Clean up all the code in the repo and reorganize everything, cut out unneccessary, absorb the frontend into this repo.
  ❌ Make readme.md properly and just document all.
+ 
  ❌ Supabase production setup
  ❌ Azure App Service for backend
  ❌ Vercel for frontend
- ❌ Upstash setup
  ❌ Connect entire pipeline end to end in production and create some script that cleanly brings together all of the user's accnt across diff platforms basically.
  ```

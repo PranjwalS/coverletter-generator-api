@@ -1,5 +1,4 @@
 import json
-
 from celery import Celery
 from playwright.sync_api import sync_playwright
 from supabase import create_client
@@ -57,7 +56,7 @@ celery_app.conf.update(
         },
         "run-scraper-pipeline-every-4-hour": {
             "task": "scraper_scheduled",
-            "schedule": crontab(minut="*/120"),
+            "schedule": crontab(minute="*/120"),
         }
         
     }
