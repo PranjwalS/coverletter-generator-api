@@ -17,27 +17,21 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def crawler_linkedin(playwright, cookies):
-    browser = playwright.chromium.launch(headless=HEADLESS, channel="chrome")
+def crawler_linkedin(playwright):
+    browser = playwright.chromium.launch(headless=HEADLESS)
     context = browser.new_context()
-    context.add_cookies(cookies)
+    # context.add_cookies(cookies)
     page = context.new_page()
     job_cards = []
     job_count = 0
         
-    #### LINKEDIN SECTION BELOW
-    #
-    #
-    #
-    #
     keywords = search_config.get("keywords")
     geoIDs = list(search_config["geoIDs"].values())
     index = 0
     for geoID in geoIDs:
         for keyword in keywords:
             while True: # go thru all pages
-                page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r86400&keywords={keyword}&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}") 
-                
+                page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r8640000&keywords={keyword}&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}") 
                 
                 try:
                     page.wait_for_selector('text="Sign in with Email"', timeout=3000)
@@ -304,8 +298,6 @@ search_config = {
 
 
 with sync_playwright() as playwright:
-    with open("secrets/linkedin_cookies.json", "r") as f:
-        cookies = json.load(f)
-    print(crawler_linkedin(playwright, cookies))
+    print(crawler_linkedin(playwright))
     
 print("Script finished at:", datetime.now())
