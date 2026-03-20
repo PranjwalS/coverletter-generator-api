@@ -279,10 +279,11 @@ search_config = {
     
 
     
-print("Script finished at:", datetime.now())
 
 
 with sync_playwright() as playwright:
     with open("secrets/linkedin_cookies.json", "r") as f:
         cookies = json.load(f)
     print(crawler_linkedin(playwright, cookies))
+    
+print("Script finished at:", datetime.now())
