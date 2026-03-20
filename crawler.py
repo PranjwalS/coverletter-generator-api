@@ -42,6 +42,7 @@ def crawler_linkedin(playwright):
                     page.wait_for_timeout(1000)
                     
                     # Fill email and password
+                    print(f"{os.getenv('LINKEDIN_EMAIL')} was detected \n")
                     page.fill('input[autocomplete="username"]', os.getenv("LINKEDIN_EMAIL"))
                     page.fill('input[autocomplete="current-password"]', os.getenv("LINKEDIN_PASSWORD"))
                     page.click('button:has-text("Sign in")')
