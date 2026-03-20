@@ -31,7 +31,7 @@ def crawler_linkedin(playwright):
     for geoID in geoIDs:
         for keyword in keywords:
             while True: # go thru all pages
-                page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r8640000&keywords={keyword}&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}") 
+                page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r86400&keywords={keyword}&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}") 
                 
                 try:
                     page.wait_for_selector('text="Sign in with Email"', timeout=3000)
