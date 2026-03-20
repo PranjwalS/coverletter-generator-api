@@ -1,23 +1,25 @@
-##### Cookies code, uite important, don't lose or touch, just uncomment if logged out and run once
-
-
-
 from playwright.sync_api import sync_playwright
 import json
 import os
 
-COOKIES_FILE = "linkedin_cookies.json"
+COOKIES_FILE = "secrets/linkedin_cookies.json"
 
 def save_cookies(context):
     cookies = context.cookies()
+    # Fix timezone to match GitHub Actions runner (Chicago)
+    for c in cookies:
+        if c["name"] == "timezone":
+            c["value"] = "America/Chicago"
     with open(COOKIES_FILE, "w") as f:
         json.dump(cookies, f, indent=2)
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=False)
-    context = browser.new_context()
+    context = browser.new_context(
+        locale="en-US",
+        timezone_id="America/Chicago",
+    )
 
-    # Load cookies if possible
     if os.path.exists(COOKIES_FILE):
         try:
             with open(COOKIES_FILE, "r") as f:
@@ -29,12 +31,10 @@ with sync_playwright() as p:
     page = context.new_page()
     page.goto("https://www.linkedin.com/jobs")
 
-    # If LinkedIn redirects to login page, wait for manual login
-
-    print("Login detected, please log in manually…")
-    input("Press Enter when done…")
+    print("Log in manually if needed...")
+    input("Press Enter when done...")
     save_cookies(context)
-    print("New cookies saved!")
+    print("New cookies saved to secrets/linkedin_cookies.json!")
 
-    input("Press Enter to close browser…")
+    input("Press Enter to close browser...")
     browser.close()

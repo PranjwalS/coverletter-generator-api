@@ -1,4 +1,5 @@
 import re
+from fastapi import Path
 from playwright.sync_api import sync_playwright
 import json
 import os
@@ -17,10 +18,11 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def crawler_linkedin(playwright):
+def crawler_linkedin(playwright, cookies):
     browser = playwright.chromium.launch(headless=HEADLESS)
-    context = browser.new_context()
-    # context.add_cookies(cookies)
+    context = browser.new_context(locale="en-US",
+        timezone_id="America/Chicago",)
+    context.add_cookies(cookies)
     page = context.new_page()
     job_cards = []
     job_count = 0
@@ -34,7 +36,7 @@ def crawler_linkedin(playwright):
                 page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r86400&keywords={keyword}&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}") 
                 
                 try:
-                    page.wait_for_selector('text="Sign in with Email"', timeout=3000)
+                    page.wait_for_selector('text="Sign in with Email"', timeout=8000)
                     print("[DEBUG] Login popup detected, filling in credentials...")
                     
                     # Click "Sign in with Email"
@@ -49,21 +51,24 @@ def crawler_linkedin(playwright):
 
                     
                     print("[DEBUG] Submitted login form, waiting...")
-                    page.wait_for_timeout(3000)
+                    page.wait_for_timeout(6000)
                 except:
                     print("[DEBUG] No login popup, continuing...")
                     
                     
                 try:
-                    page.wait_for_selector('ul:has(li[data-occludable-job-id])', timeout=3000)
+                    page.wait_for_selector('ul:has(li[data-occludable-job-id])', timeout=8000)
+                    # page.wait_for_load_state("networkidle", timeout=10000)
                 except:
                     break
                 
                 
-                page.wait_for_timeout(3000) 
+                page.wait_for_timeout(5000) 
 
                 # scroll page to end
                 job_cards_locator = page.locator('ul:has(li[data-occludable-job-id]) li[data-occludable-job-id]')
+
+
 
                 
                 previous_count = 0
@@ -74,8 +79,8 @@ def crawler_linkedin(playwright):
                     # scroll through each job card
                     for i in range(previous_count, current_count):
                         job_cards_locator.nth(i).scroll_into_view_if_needed()
-                        page.wait_for_timeout(100)
-
+                        page.wait_for_timeout(200)
+                    page.wait_for_timeout(800)
                     previous_count = current_count
                     
                 page.wait_for_selector('li[data-occludable-job-id]')
@@ -299,6 +304,8 @@ search_config = {
 
 
 with sync_playwright() as playwright:
-    print(crawler_linkedin(playwright))
+    with open("secrets/linkedin_cookies.json", "r") as f:
+        cookies = json.load(f)
+    print(crawler_linkedin(playwright, cookies))
     
 print("Script finished at:", datetime.now())
