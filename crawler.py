@@ -304,8 +304,12 @@ search_config = {
 
 
 with sync_playwright() as playwright:
-    with open("secrets/linkedin_cookies.json", "r") as f:
-        cookies = json.load(f)
+    cookies_env = os.getenv("COOKIES")
+    if cookies_env:
+        cookies = json.loads(cookies_env)
+    else:
+        with open("secrets/linkedin_cookies.json", "r") as f:
+            cookies = json.load(f)
     print(crawler_linkedin(playwright, cookies))
     
 print("Script finished at:", datetime.now())

@@ -35,6 +35,7 @@ jobs:
           LINKEDIN_PASSWORD: ${{ secrets.LINKEDIN_PASSWORD }}
           LINKEDIN_EMAIL: ${{ secrets.LINKEDIN_EMAIL }}
           HEADLESS: "true"
+          COOKIES: ${{ secrets.COOKIES }}
           # LINKEDIN_COOKIES_JSON: ${{ secrets.LINKEDIN_COOKIES_JSON }} no need rn, doing bot fill :(
         run: |
           python crawler.py
