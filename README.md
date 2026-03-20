@@ -12,6 +12,7 @@
  ✅ Scoring logic improvements
  ✅ Expand to more job boards (Indeed, Glassdoor etc) - NO NEED, mediocre results from Greenhouse and indeed.
  ✅ Put the crawler as a celery task instead
+ ✅ Never mind the crawler ended up as a cron job on github actions
 
  ❌ UI general polish; finalize both dashboards
  ❌ Upstash setup AND PUT CELERY ON ORACLE VM
