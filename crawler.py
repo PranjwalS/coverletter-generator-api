@@ -37,6 +37,28 @@ def crawler_linkedin(playwright, cookies):
         for keyword in keywords:
             while True: # go thru all pages
                 page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r86400&keywords={keyword}&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}") 
+                
+                
+                try:
+                    page.wait_for_selector('text="Sign in with Email"', timeout=3000)
+                    print("[DEBUG] Login popup detected, filling in credentials...")
+                    
+                    # Click "Sign in with Email"
+                    page.click('text="Sign in with Email"')
+                    page.wait_for_timeout(1000)
+                    
+                    # Fill email and password
+                    page.fill('input[autocomplete="username"]', os.getenv("LINKEDIN_EMAIL"))
+                    page.fill('input[autocomplete="current-password"]', os.getenv("LINKEDIN_PASSWORD"))
+                    page.click('button:has-text("Sign in")')
+
+                    
+                    print("[DEBUG] Submitted login form, waiting...")
+                    page.wait_for_timeout(3000)
+                except:
+                    print("[DEBUG] No login popup, continuing...")
+                    
+                    
                 try:
                     page.wait_for_selector('ul:has(li[data-occludable-job-id])', timeout=3000)
                 except:
