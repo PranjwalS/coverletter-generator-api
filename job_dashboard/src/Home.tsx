@@ -29,7 +29,7 @@ interface StepProps { number: string; title: string; description: string; index:
 // ─── STATIC DATA (features + steps don't need DB) ─────────────────────────────
 
 const FEATURES: FeatureCardProps[] = [
-  { icon: <Search className="w-5 h-5" />,    title: "Intelligent Scraping",    description: "Pulls from LinkedIn and major boards every 4-6 hours. No manual searching. Just results that match your exact criteria.", index: 0 },
+  { icon: <Search className="w-5 h-5" />,    title: "Intelligent Scraping",    description: "Pulls from LinkedIn and major boards every 4 hours. No manual searching. Just results that match your exact criteria.", index: 0 },
   { icon: <Target className="w-5 h-5" />,    title: "AI Scoring Engine",       description: "Every job gets a relevance score based on your CV, skills, and preferred role type. See your best matches instantly.", index: 1 },
   { icon: <FileText className="w-5 h-5" />,  title: "Cover Letter Gen",        description: "LLM-powered cover letters tailored per job description. Generated in seconds, downloaded as PDF.", index: 2 },
   { icon: <Zap className="w-5 h-5" />,       title: "Chrome Autofill",         description: "Extension that fills application forms with your profile data. One click replaces ten minutes of typing.", index: 3 },

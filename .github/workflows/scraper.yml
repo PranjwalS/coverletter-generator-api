@@ -32,4 +32,4 @@ jobs:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           HEADLESS: ${{ secrets.HEADLESS }}
         run: |
-          python fetch-jobs.py
+          python tasks/fetch-jobs.py
