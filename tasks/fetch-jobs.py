@@ -6,7 +6,6 @@ import requests
 import re
 from bs4 import BeautifulSoup
 from supabase import create_client
-from playwright.sync_api import sync_playwright
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.helpers.email_service import send_email
