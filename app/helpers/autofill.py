@@ -1,11 +1,13 @@
+import sys
 from pydantic import BaseModel
 import json
 import os
 import re
 
+import os
+PROFILE_PATH = os.path.join(os.path.dirname(__file__), "..", "job-apply-extension", "profile.json")
 # ── Profile ───────────────────────────────────────────────────────────────────
 
-PROFILE_PATH = os.path.join(os.path.dirname(__file__), "profile.json")
 with open(PROFILE_PATH, "r") as f:
     USER_PROFILE = json.load(f)
 
