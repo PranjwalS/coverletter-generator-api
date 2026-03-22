@@ -6,6 +6,7 @@ import requests
 import re
 from bs4 import BeautifulSoup
 from supabase import create_client
+from playwright.sync_api import sync_playwright
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.helpers.email_service import send_email
@@ -13,6 +14,8 @@ from app.helpers.email_service import send_email
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+HEADLESS = os.getenv("HEADLESS")
 
 new_jobs = []
 keywords = ['"fall"', '"sept"', '"september"', '"autumn"']
@@ -42,7 +45,6 @@ all_jobs = []
 start = 0
 response = supabase.table("jobs").select("url").execute()
 existing_urls = set(row["url"] for row in response.data)
-
 
 def matches_include(title_lower):
     for kw in INCLUDE:
@@ -115,8 +117,21 @@ for location in locations:
                 job_soup = BeautifulSoup(job_response.text, "html.parser") 
                 desc = job_soup.select_one("[class*=description] > section > div")
                 tags = job_soup.select_one("[class*=_job-criteria-list]")
+                
                 company = company_el.get_text(strip=True) if company_el else None
-               
+                company_slug = re.sub(r'[^a-z0-9]+', '-', company.lower()).strip('-')
+                try:
+                    company_resp = requests.get(
+                        f"https://www.linkedin.com/company/{company_slug}",
+                        headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"}
+                    )
+                    company_soup = BeautifulSoup(company_resp.text, "html.parser")
+                    h2 = company_soup.find("h2", string=lambda t: t and "About us" in t)
+                    company_desc = h2.find_next_sibling("div").find("p").get_text(strip=True) if h2 else ""
+                except:
+                    company_desc = ""
+                
+                                
                 item = {
                     "title": title,
                     "company": company,
@@ -124,7 +139,8 @@ for location in locations:
                     "url": url,
                     "tags": [t.strip() for t in tags.get_text(separator="|").split("|") if t.strip()] if tags else None,
                     "job_desc": desc.get_text(strip=True) if desc else None,
-                    "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M")
+                    "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "company_desc": company_desc,
                 }
                 
                 supabase.table("jobs").insert(item).execute()
