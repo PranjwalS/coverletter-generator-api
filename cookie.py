@@ -1,12 +1,14 @@
 from playwright.sync_api import sync_playwright
 import json
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
+HEADLESS = os.getenv("HEADLESS")
 COOKIES_FILE = "secrets/linkedin_cookies.json"
 
 def save_cookies(context):
     cookies = context.cookies()
-    # Fix timezone to match GitHub Actions runner (Chicago)
     for c in cookies:
         if c["name"] == "timezone":
             c["value"] = "America/Chicago"
@@ -14,7 +16,7 @@ def save_cookies(context):
         json.dump(cookies, f, indent=2)
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=False)
+    browser = p.chromium.launch(headless=HEADLESS)
     context = browser.new_context(
         locale="en-US",
         timezone_id="America/Chicago",

@@ -1,6 +1,7 @@
 import re
 from fastapi import Path
-from playwright.sync_api import sync_playwright
+# from playwright.sync_api import sync_playwright
+from undetected_playwright.sync_api import sync_playwright
 import json
 import os
 from dotenv import load_dotenv
@@ -8,15 +9,16 @@ from datetime import datetime
 import time
 from supabase import create_client
 from app.email_service import send_email
+from playwright_stealth import stealth_sync
 
 
 print("Script started at:", datetime.now())
 load_dotenv()
 HEADLESS = bool(os.getenv("HEADLESS"))
-# Connect to Supabase Postgres
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 
 def crawler_linkedin(playwright, cookies):
     browser = playwright.chromium.launch(headless=HEADLESS)
@@ -304,12 +306,26 @@ search_config = {
 
 
 with sync_playwright() as playwright:
-    cookies_env = os.getenv("COOKIES")
-    if cookies_env:
-        cookies = json.loads(cookies_env)
-    else:
-        with open("secrets/linkedin_cookies.json", "r") as f:
-            cookies = json.load(f)
+    browser = playwright.chromium.launch(headless=HEADLESS)
+    context = browser.new_context(
+        locale="en=US",
+        timezone_id="America/Chicago",
+    )
+    page = context.new_page()
+    stealth_sync(page)
+    page.goto("https://www.linkedin.com/login")
+    
+    try:      
+        page.wait_for_selector('input[autocomplete="username"]', timeout=8000)
+        page.fill('input[autocomplete="username"]', os.getenv("LINKEDIN_EMAIL"))
+        page.fill('input[autocomplete="current-password"]', os.getenv("LINKEDIN_PASSWORD"))
+        page.click('button:has-text("Sign in")')
+
+        page.wait_for_timeout(6000)
+    except:
+        print("[DEBUG] No login popup, continuing...")    
+    
+    cookies = context.cookies()
     print(crawler_linkedin(playwright, cookies))
     
 print("Script finished at:", datetime.now())
