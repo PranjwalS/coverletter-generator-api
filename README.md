@@ -14,9 +14,9 @@
  ✅ Put the crawler as a celery task instead
  ✅ Never mind the crawler ended up as a cron job on github actions
 
- ❌ UI general polish; finalize both dashboards
+ ✅ UI general polish; finalize both dashboards
  ❌ Upstash setup AND PUT CELERY ON ORACLE VM
- ❌ Clean up all the code in the repo and reorganize everything, cut out unneccessary, absorb the frontend into this repo.
+ ✅ Clean up all the code in the repo and reorganize everything, cut out unneccessary, absorb the frontend into this repo.
  ❌ Make readme.md properly and just document all.
  
  ❌ Supabase production setup

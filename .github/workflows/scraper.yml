@@ -1,8 +1,8 @@
-name: Run Scraper
+name: Run Fetch-Jobs
 
 on:
   schedule:
-    - cron: "0 */4 * * *"  
+    - cron: "0 */2 * * *"  
   workflow_dispatch:         
 
 jobs:
@@ -21,9 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install playwright
-          playwright install chromium
-          playwright install-deps
+
 
       - name: Run scraper
         env:
@@ -32,10 +30,5 @@ jobs:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
-          LINKEDIN_PASSWORD: ${{ secrets.LINKEDIN_PASSWORD }}
-          LINKEDIN_EMAIL: ${{ secrets.LINKEDIN_EMAIL }}
-          HEADLESS: "true"
-          COOKIES: ${{ secrets.COOKIES }}
-          # LINKEDIN_COOKIES_JSON: ${{ secrets.LINKEDIN_COOKIES_JSON }} no need rn, doing bot fill :(
         run: |
-          python crawler.py
+          python fetch-jobs.py

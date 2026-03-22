@@ -22,5 +22,7 @@ Thumbs.db
 
 # Ignore secrets folder
 secrets/
+obsolete/
+app/job-apply-extension/profile.json
 
 app/profile.json
