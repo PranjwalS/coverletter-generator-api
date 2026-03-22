@@ -1,7 +1,8 @@
 import re
 from fastapi import Path
-# from playwright.sync_api import sync_playwright
-from undetected_playwright.sync_api import sync_playwright
+from playwright.async_api import async_playwright
+import asyncio
+from playwright_stealth import Stealth
 import json
 import os
 from dotenv import load_dotenv
@@ -9,8 +10,6 @@ from datetime import datetime
 import time
 from supabase import create_client
 from app.email_service import send_email
-from playwright_stealth import stealth_sync
-
 
 print("Script started at:", datetime.now())
 load_dotenv()
@@ -20,12 +19,17 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
-def crawler_linkedin(playwright, cookies):
-    browser = playwright.chromium.launch(headless=HEADLESS)
-    context = browser.new_context(locale="en-US",
-        timezone_id="America/Chicago",)
-    context.add_cookies(cookies)
-    page = context.new_page()
+async def crawler_linkedin(playwright, cookies):
+    browser = await playwright.chromium.launch(headless=HEADLESS)
+    context = await browser.new_context(locale="en-US",
+        timezone_id="America/Chicago",
+        user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+        viewport={"width": 1280, "height": 800},
+        extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
+        )
+    
+    await context.add_cookies(cookies)
+    page = await context.new_page()
     job_cards = []
     job_count = 0
         
@@ -34,196 +38,155 @@ def crawler_linkedin(playwright, cookies):
     index = 0
     for geoID in geoIDs:
         for keyword in keywords:
-            while True: # go thru all pages
-                page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r86400&keywords={keyword}&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}") 
-                
-                try:
-                    page.wait_for_selector('text="Sign in with Email"', timeout=8000)
-                    print("[DEBUG] Login popup detected, filling in credentials...")
-                    
-                    # Click "Sign in with Email"
-                    page.click('text="Sign in with Email"')
-                    page.wait_for_timeout(1000)
-                    
-                    # Fill email and password
-                    print(f"{os.getenv('LINKEDIN_EMAIL')} was detected \n")
-                    page.fill('input[autocomplete="username"]', os.getenv("LINKEDIN_EMAIL"))
-                    page.fill('input[autocomplete="current-password"]', os.getenv("LINKEDIN_PASSWORD"))
-                    page.click('button:has-text("Sign in")')
+            while True:
+                await page.goto(f"https://www.linkedin.com/jobs/search/?geoId={geoID}&f_TPR=r86400&keywords={keyword}&origin=JOB_SEARCH_PAGE_SEARCH_BUTTON&refresh=true&start={25*index}")
 
-                    
+                try:
+                    await page.wait_for_selector('text="Sign in with Email"', timeout=8000)
+                    print("[DEBUG] Login popup detected, filling in credentials...")
+                    await page.click('text="Sign in with Email"')
+                    await page.wait_for_timeout(1000)
+                    print(f"{os.getenv('LINKEDIN_EMAIL')} was detected \n")
+                    await page.fill('input[autocomplete="username"]', os.getenv("LINKEDIN_EMAIL"))
+                    await page.fill('input[autocomplete="current-password"]', os.getenv("LINKEDIN_PASSWORD"))
+                    await page.click('button:has-text("Sign in")')
                     print("[DEBUG] Submitted login form, waiting...")
-                    page.wait_for_timeout(6000)
+                    await page.wait_for_timeout(6000)
                 except:
                     print("[DEBUG] No login popup, continuing...")
-                    
-                    
+
                 try:
-                    page.wait_for_selector('ul:has(li[data-occludable-job-id])', timeout=8000)
-                    # page.wait_for_load_state("networkidle", timeout=10000)
+                    await page.wait_for_selector('ul:has(li[data-occludable-job-id])', timeout=8000)
                 except:
                     break
-                
-                
-                page.wait_for_timeout(5000) 
 
-                # scroll page to end
+                await page.wait_for_timeout(5000)
+
                 job_cards_locator = page.locator('ul:has(li[data-occludable-job-id]) li[data-occludable-job-id]')
 
-
-
-                
                 previous_count = 0
                 while True:
-                    current_count = job_cards_locator.count()
+                    current_count = await job_cards_locator.count()
                     if current_count == previous_count:
                         break
-                    # scroll through each job card
                     for i in range(previous_count, current_count):
-                        job_cards_locator.nth(i).scroll_into_view_if_needed()
-                        page.wait_for_timeout(200)
-                    page.wait_for_timeout(800)
+                        await job_cards_locator.nth(i).scroll_into_view_if_needed()
+                        await page.wait_for_timeout(200)
+                    await page.wait_for_timeout(800)
                     previous_count = current_count
-                    
-                page.wait_for_selector('li[data-occludable-job-id]')
-                jobs_on_page = page.query_selector_all('li[data-occludable-job-id]')
-                
-                for card in jobs_on_page:
-                    link_el = card.query_selector("a.job-card-container__link")
-                    job_link = link_el.get_attribute("href").split("/?")[0] if link_el else None
-                    job_link = f"https://www.linkedin.com{job_link}" if job_link else None
 
+                await page.wait_for_selector('li[data-occludable-job-id]')
+                jobs_on_page = await page.query_selector_all('li[data-occludable-job-id]')
+
+                for card in jobs_on_page:
+                    link_el = await card.query_selector("a.job-card-container__link")
+                    job_link = (await link_el.get_attribute("href")).split("/?")[0] if link_el else None
+                    job_link = f"https://www.linkedin.com{job_link}" if job_link else None
                     job_cards.append((job_link,))
                 print("Job cards found:", job_cards)
 
                 index += 1
             index = 0
-            time.sleep(2)
-                ##########
-        
-    
-    
-       ## remove duplicates
-        # scrape link by link
-    time.sleep(10)
+            await asyncio.sleep(2)
+
+    await asyncio.sleep(10)
     response = supabase.table("jobs").select("url").execute()
     existing_urls = set(row["url"] for row in response.data)
 
-    page = context.new_page()
-    page.set_default_navigation_timeout(300000)  # 5 min
-    page.set_default_timeout(120000)     
-    
-    
+    page = await context.new_page()
+    page.set_default_navigation_timeout(300000)
+    page.set_default_timeout(120000)
+
     new_jobs = []
-    
-    #############
-####    ########## imrpoved the scraping stuff, gotta fix endpoints tho since it generaes coverltter unnecceaseilry and also just clean up the keywords , empty db and rerun all, put job scoring into scraping tho
+
     for link in job_cards:
         if link[0] in existing_urls:
             continue
 
-        page.goto(f"{link[0]}")
+        await page.goto(f"{link[0]}")
         item = {}
 
         try:
-            page.wait_for_selector('[data-testid="expandable-text-box"]', timeout=15000)
+            await page.wait_for_selector('[data-testid="expandable-text-box"]', timeout=15000)
         except:
             print(f"Skipping {link[0]} - timed out")
             continue
 
-        full_text = page.inner_text("body")
-
-        # --- TITLE + COMPANY: from page title, ironclad ---
-        title_text = page.title()
+        full_text = await page.inner_text("body")
+        title_text = await page.title()
         parts = [p.strip() for p in title_text.split(" | ")]
         job_title = parts[0] if len(parts) > 0 else ""
         company_title = parts[1] if len(parts) > 1 else ""
 
-        # --- LOCATION: extract from the job alert text which is always "{title}, {location}" ---
         location_title = ""
         try:
             alert_section = page.locator('h2:has-text("Set alert for similar jobs")')
-            if alert_section.count() > 0:
+            if await alert_section.count() > 0:
                 for levels in range(1, 8):
                     xpath = "/".join([".."] * levels)
                     container = alert_section.locator(f"xpath={xpath}")
-                    if container.count() == 0:
+                    if await container.count() == 0:
                         continue
                     alert_p = container.locator("p").first
-                    if alert_p.count() > 0:
-                        alert_text = alert_p.inner_text().strip()
-                        # format is always "Job Title, City, State, Country"
-                        # strip the job title prefix off the front
+                    if await alert_p.count() > 0:
+                        alert_text = (await alert_p.inner_text()).strip()
                         if "," in alert_text:
                             location_title = alert_text.split(",", 1)[1].strip()
                         break
         except:
             pass
 
-        # --- JOB DESC: find h2 "About the job", grab the expandable-text-box INSIDE that section ---
         job_desc_text = ""
         try:
-            # locate the h2 with exact text, then find the expandable box within the same parent container
             about_job_section = page.locator('h2:has-text("About the job")')
-            if about_job_section.count() > 0:
-                # walk up to the section container, then find the text box inside it
+            if await about_job_section.count() > 0:
                 container = about_job_section.locator('xpath=../../..')
                 desc_box = container.locator('[data-testid="expandable-text-box"]')
-                if desc_box.count() > 0:
-                    job_desc_text = desc_box.first.inner_text()
+                if await desc_box.count() > 0:
+                    job_desc_text = await desc_box.first.inner_text()
         except:
             pass
 
-        # --- COMPANY DESC: same pattern anchored to "About the company" h2 ---
         company_desc_text = ""
         try:
             about_company_section = page.locator('h2:has-text("About the company")')
-            if about_company_section.count() > 0:
+            if await about_company_section.count() > 0:
                 container = about_company_section.locator('xpath=../../..')
                 desc_box = container.locator('[data-testid="expandable-text-box"]')
-                if desc_box.count() > 0:
-                    company_desc_text = desc_box.first.inner_text()
+                if await desc_box.count() > 0:
+                    company_desc_text = await desc_box.first.inner_text()
         except:
             pass
 
-        # --- APPLY TYPE: aria-label on the apply button, e.g. "Apply on company website" ---
         apply_text = ""
         try:
             apply_btn = page.locator('[data-view-name="job-apply-button"]')
-            if apply_btn.count() > 0:
-                apply_text = apply_btn.get_attribute("aria-label") or ""
+            if await apply_btn.count() > 0:
+                apply_text = await apply_btn.get_attribute("aria-label") or ""
         except:
             pass
 
-        # --- TAGS: scrape ALL meaningful signals from full_text ---
         tags_text = []
-        # workplace type
         for t in ["On-site", "Remote", "Hybrid"]:
             if t in full_text:
                 tags_text.append(t)
-        # job type
         for t in ["Full-time", "Part-time", "Contract", "Temporary", "Volunteer", "Internship"]:
             if t in full_text:
                 tags_text.append(t)
-        # experience level
         for t in ["Internship", "Entry level", "Associate", "Mid-Senior level", "Director", "Executive"]:
             if t in full_text and t not in tags_text:
                 tags_text.append(t)
-        # industry / function signals from job desc itself
         for t in ["Co-op", "co-op", "New Grad", "Summer", "Fall", "Winter", "Spring"]:
             if t in full_text and t not in tags_text:
                 tags_text.append(t)
 
-        # Salary detection - look for $X/hr, $X/yr, $XK patterns
-        import re
         salary_matches = re.findall(r'\$[\d,]+(?:\.\d+)?(?:/hr|/yr|K)?(?:\s*[-–]\s*\$[\d,]+(?:\.\d+)?(?:/hr|/yr|K)?)?', full_text)
         if salary_matches:
-            # take the first clean match, dedupe
             for s in salary_matches:
                 s = s.strip()
                 if s and s not in tags_text:
                     tags_text.append(s)
-                    break  # just first salary mention is enough
+                    break
 
         item["title"] = job_title
         item["company"] = company_title
@@ -237,9 +200,7 @@ def crawler_linkedin(playwright, cookies):
         supabase.table("jobs").insert(item).execute()
         job_count += 1
         new_jobs.append({'title': job_title, 'company': company_title})
-        time.sleep(1)
-
-
+        await asyncio.sleep(1)
 
     if new_jobs:
         rows = "\n".join([
@@ -251,12 +212,10 @@ def crawler_linkedin(playwright, cookies):
             """
             for j in new_jobs
         ])
-
         body = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
             <h2 style="color: #1a1a1a; margin-bottom: 4px;">Crawler Run Complete</h2>
             <p style="color: #666; margin-top: 0;">{len(new_jobs)} new job{'s' if len(new_jobs) != 1 else ''} found</p>
-            
             <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
                 <thead>
                     <tr style="background: #f5f5f5;">
@@ -264,14 +223,9 @@ def crawler_linkedin(playwright, cookies):
                         <th style="padding: 10px 12px; text-align: left; font-size: 13px; color: #888; font-weight: 600;">COMPANY</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {rows}
-                </tbody>
+                <tbody>{rows}</tbody>
             </table>
-
-            <p style="color: #aaa; font-size: 12px; margin-top: 24px;">
-                Scraped at {datetime.now().strftime("%Y-%m-%d %H:%M")}
-            </p>
+            <p style="color: #aaa; font-size: 12px; margin-top: 24px;">Scraped at {datetime.now().strftime("%Y-%m-%d %H:%M")}</p>
         </div>
         """
         send_email(
@@ -280,9 +234,8 @@ def crawler_linkedin(playwright, cookies):
             html=True
         )
 
-    browser.close()  
-
-    return("success", job_count)
+    await browser.close()
+    return ("success", job_count)
 
 
 search_config = {
@@ -304,28 +257,38 @@ search_config = {
 
     
 
+async def main():
+    cookies_env = os.getenv("COOKIES")
+    if cookies_env:
+        cookies = json.loads(cookies_env)
+    else:
+        with open("secrets/linkedin_cookies.json", "r") as f:
+            cookies = json.load(f)
 
-with sync_playwright() as playwright:
-    browser = playwright.chromium.launch(headless=HEADLESS)
-    context = browser.new_context(
-        locale="en=US",
-        timezone_id="America/Chicago",
-    )
-    page = context.new_page()
-    stealth_sync(page)
-    page.goto("https://www.linkedin.com/login")
-    
-    try:      
-        page.wait_for_selector('input[autocomplete="username"]', timeout=8000)
-        page.fill('input[autocomplete="username"]', os.getenv("LINKEDIN_EMAIL"))
-        page.fill('input[autocomplete="current-password"]', os.getenv("LINKEDIN_PASSWORD"))
-        page.click('button:has-text("Sign in")')
+    async with Stealth().use_async(async_playwright()) as playwright:
+        browser = await playwright.chromium.launch(headless=HEADLESS)
+        context = await browser.new_context(
+            locale="en-US",
+            timezone_id="America/Chicago",
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+            viewport={"width": 1280, "height": 800},
+            extra_http_headers={"Accept-Language": "en-US,en;q=0.9"},
+        )
+        await context.add_cookies(cookies)
+        page = await context.new_page()
+        await page.goto("https://www.linkedin.com/jobs")
 
-        page.wait_for_timeout(6000)
-    except:
-        print("[DEBUG] No login popup, continuing...")    
-    
-    cookies = context.cookies()
-    print(crawler_linkedin(playwright, cookies))
-    
-print("Script finished at:", datetime.now())
+        try:
+            await page.wait_for_selector('input[autocomplete="username"]', timeout=8000)
+            await page.fill('input[autocomplete="username"]', os.getenv("LINKEDIN_EMAIL"))
+            await page.fill('input[autocomplete="current-password"]', os.getenv("LINKEDIN_PASSWORD"))
+            await page.click('button:has-text("Sign in")')
+            await page.wait_for_timeout(6000)
+        except:
+            print("[DEBUG] No login form, continuing...")
+
+        cookies = await context.cookies()
+        result = await crawler_linkedin(playwright, cookies)
+        print(result)
+
+asyncio.run(main())
