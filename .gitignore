@@ -26,4 +26,5 @@ secrets/
 obsolete/
 app/job-apply-extension/profile.json
 
-app/profile.json"node_modules/" 
+app/profile.json
+job_dashboard/node_modules
