@@ -100,7 +100,7 @@ def generate_coverletter(self, job_id):
 
     try:
         completion = client.chat.completions.create(
-            model="mistralai/Mistral-7B-Instruct-v0.3",
+            model="meta-llama/Llama-3.1-8B-Instruct",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=500,
             temperature=0.4,
