@@ -19,8 +19,8 @@
  ✅ Clean up all the code in the repo and reorganize everything, cut out unneccessary, absorb the frontend into this repo.
  ❌ Make readme.md properly and just document all.
  
- ❌ Supabase production setup
- ❌ Azure App Service for backend
- ❌ Vercel for frontend
+ ✅ Supabase production setup
+ ✅ VM with nginx+gunicorn+uvicorn with ngrok static url for backend
+ ✅ Vercel for frontend
  ❌ Connect entire pipeline end to end in production and create some script that cleanly brings together all of the user's accnt across diff platforms basically.
  ```
