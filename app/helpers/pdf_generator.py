@@ -22,8 +22,7 @@ real-time merchant management, inventory, and checkout, with FastAPI, PostgreSQL
 Additionally, I built an Android system that overlays restrictions on apps and websites selected by the user, automatically enforcing schedules and limits to enhance focus and productivity.
 """
 def make_pdf(ai_text, buffer, filename="coverletter.pdf"):
-    font_path = os.path.join(os.path.dirname(__file__), 'fonts', 'cmunrm.ttf')
-    
+    font_path = os.path.join(os.path.dirname(__file__), '..', 'fonts', 'cmunrm.ttf')    
     if not os.path.exists(font_path):
         print(f"ERROR: Font file not found at {font_path}")
         return

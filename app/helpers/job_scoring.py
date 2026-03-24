@@ -486,7 +486,7 @@ WEIGHTS = {
     # 'hf_semantic_score':  0.4,
 }
 
-THRESHOLD_PRE_CL  = 25.0
+THRESHOLD_PRE_CL  = 10.0
 THRESHOLD_POST_CL = 60.0
 
 
