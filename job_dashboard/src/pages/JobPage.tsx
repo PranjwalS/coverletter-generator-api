@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import type { SupabaseJob } from "../types/supabase_job";
 import { useNavigate, useParams } from "react-router-dom";
+import API_BASE_URL from "@/config";
 
 // ─── MOTION-LESS FRAMER REPLACEMENTS (pure CSS) ─────────────────────────────
 // All animations handled via Tailwind + CSS custom classes
@@ -295,7 +296,7 @@ function QuickActions({ jobUrl, applyType, coverLetterText, title }: QuickAction
     if (!coverLetterText) return;
     setClLoading(true);
     try {
-      const res = await fetch("http://localhost:8001/coverletter-text", {
+      const res = await fetch(`${API_BASE_URL}/coverletter-text`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: coverLetterText }),
@@ -314,7 +315,7 @@ function QuickActions({ jobUrl, applyType, coverLetterText, title }: QuickAction
   const handleCVDownload = async () => {
     setCvLoading(true);
     const a = document.createElement("a");
-    a.href = "http://localhost:8001/download-cv";
+    a.href = `${API_BASE_URL}/download-cv`;
     a.download = "CV_Pranjwal_Singh.pdf";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => setCvLoading(false), 1000);
@@ -804,7 +805,7 @@ function JobPage() {
         let finalJob = data as SupabaseJob;
 
         if (!finalJob.coverletter_text || !finalJob.score || finalJob.score === 0) {
-          const clRes = await fetch("http://localhost:8001/generate-coverletter", {
+          const clRes = await fetch(`${API_BASE_URL}/generate-coverletter`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ job_id: jobId }),

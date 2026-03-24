@@ -1,3 +1,5 @@
+import API_BASE_URL from "@/config";
+
 interface QuickActionsProps {
   jobUrl: string;
   applyType: string;
@@ -16,7 +18,7 @@ const handleCoverLetterDownload = async () => {
   if (!coverLetterText) return;
 
   try {
-    const res = await fetch("http://localhost:8001/coverletter-text", {
+    const res = await fetch(`${API_BASE_URL}/coverletter-text`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: coverLetterText }),
@@ -39,7 +41,7 @@ const handleCoverLetterDownload = async () => {
 };
 
   const handleCVDownload = () => {
-    const url = "http://localhost:8001/download-cv";
+    const url = `${API_BASE_URL}/download-cv`;
     const a = document.createElement("a");
     a.href = url;
     a.download = "CV_Pranjwal_Singh.pdf"; // filename for download
