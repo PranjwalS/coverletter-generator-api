@@ -105,7 +105,7 @@ function usePortalDropdown() {
     const handler = (e: MouseEvent) => {
       if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
         // check if click is inside any portal dropdown
-        const portalEls = document.querySelectorAll("[data-portal-dropdown]");
+        const portalEls = Array.from(document.querySelectorAll("[data-portal-dropdown]"));
         for (const el of portalEls) {
           if (el.contains(e.target as Node)) return;
         }
