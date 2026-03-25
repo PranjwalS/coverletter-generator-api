@@ -3,7 +3,7 @@ from celery import Celery
 from supabase import create_client
 import os
 from datetime import datetime
-from openai import OpenAI
+from groq import Groq
 from celery.schedules import crontab
 from dotenv import load_dotenv
 
@@ -23,14 +23,8 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 REDIS_URL = os.getenv("REDIS_URL")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-HF_API_TOKEN = os.getenv("HF_API_TOKEN")
-
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-client = OpenAI(
-    base_url="https://router.huggingface.co/v1",
-    api_key=HF_API_TOKEN,
-)
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 celery_app = Celery(
     "worker",
@@ -82,10 +76,10 @@ def emailer(unscored_count, cl_count):
 @celery_app.task(name="enqueue_scoring_jobs")
 def enqueue_scoring_jobs():
     # unscored jobs
-    unscored = supabase.table("jobs").select("*").eq("processed_coverletter", False).is_("scored_at", "null").range(0, 10000).execute().data or []
+    unscored = supabase.table("jobs").select("*").eq("processed_coverletter", False).is_("scored_at", "null").range(0, 5).execute().data or []
     
     # scored but no coverletter yet (above threshold)
-    needs_cl = supabase.table("jobs").select("*").eq("processed_coverletter", False).not_.is_("scored_at", "null").gte("score", THRESHOLD_PRE_CL).range(0, 10000).execute().data or []
+    needs_cl = supabase.table("jobs").select("*").eq("processed_coverletter", False).not_.is_("scored_at", "null").gte("score", THRESHOLD_PRE_CL).range(0, 5).execute().data or []
 
     for job in unscored:
         job_scoring_task.delay(job["id"])
@@ -138,13 +132,15 @@ def generate_coverletter(self, job_id):
     )
 
     try:
-        completion = client.chat.completions.create(
-            model="meta-llama/Llama-3.1-8B-Instruct",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=500,
-            temperature=0.4,
+        resp = groq_client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            model="openai/gpt-oss-120b",
         )
-        output = completion.choices[0].message.content
+
+        output = resp.choices[0].message.content
         final_output = (
             output.strip() + "\n\n" +
             cv_summary_1.strip() + "\n\n" +
@@ -160,6 +156,7 @@ def generate_coverletter(self, job_id):
     print(f"Done job {job['id']}")
 
 if __name__ == "__main__":
+    # enqueue_scoring_jobs()
     jobs = supabase.table("jobs").select("*").eq("processed_coverletter", False).is_("scored_at", "null").range(0, 2).execute()
     for job in jobs.data:
         job_scoring_task.delay(job["id"])

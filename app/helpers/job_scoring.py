@@ -497,7 +497,7 @@ def calculate_job_score(job_data: dict) -> dict:
     tags         = job_data.get('tags', [])
     company      = job_data.get('company', '').lower()
     job_desc     = job_data.get('job_desc', '').lower()
-    company_desc = job_data.get('company_desc', '').lower()
+    company_desc = (job_data.get('company_desc') or 'None').lower() if job_data else ''
     location     = job_data.get('location', '').lower()
 
     scores = {

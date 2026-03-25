@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 import os
 from pydantic import BaseModel
-import google.generativeai as genai
+from groq import Groq
 from io import BytesIO
 from supabase import create_client
 
@@ -30,9 +30,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash")
+groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 #### Classes
 class TextData(BaseModel):
@@ -73,15 +71,16 @@ def generate_coverletter(data: JobRequest):
 
     # Cover letter
     prompt = makePrompt(job["title"], job["company"], job["job_desc"], job["company_desc"])
-    response = model.generate_content(
-        prompt,
-        generation_config={
-            "max_output_tokens": 500,
-            "temperature": 0.4,
-        }
+    resp = groq_client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ],
+        model="openai/gpt-oss-120b",
     )
-    output = response.text if response.text else "Error generating response"    
-    
+
+    output = resp.choices[0].message.content
+    print(output.strip())
     final_output = (
         output.strip() + "\n\n" +
         cv_summary_1.strip() + "\n\n" +
