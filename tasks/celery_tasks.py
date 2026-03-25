@@ -8,6 +8,7 @@ from celery.schedules import crontab
 from dotenv import load_dotenv
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from app.helpers.email_service import send_email
 from app.helpers.prompt import makePrompt, cv_summary_1, cv_summary_2, closing
 from app.helpers.job_scoring import calculate_job_score, THRESHOLD_PRE_CL
 
@@ -53,6 +54,30 @@ celery_app.conf.update(
     }
 )
 
+def emailer(unscored_count, cl_count):
+    body = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+        <h2 style="color: #1a1a1a; margin-bottom: 4px;">Celery Beat — Pipeline Run</h2>
+        <p style="color: #666; margin-top: 0;">Run at {datetime.now().strftime("%Y-%m-%d %H:%M UTC")}</p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+            <tbody>
+                <tr>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid #eee;">Jobs enqueued for scoring</td>
+                    <td style="padding: 8px 12px; border-bottom: 1px solid #eee; color: #666;">{unscored_count}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 12px;">Jobs enqueued for cover letter</td>
+                    <td style="padding: 8px 12px; color: #666;">{cl_count}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    """
+    send_email(
+        subject=f"⚙️ Celery run: {unscored_count} to score, {cl_count} for CL",
+        body=body,
+        html=True
+    )
 
 @celery_app.task(name="enqueue_scoring_jobs")
 def enqueue_scoring_jobs():
@@ -69,6 +94,7 @@ def enqueue_scoring_jobs():
         generate_coverletter.delay(job["id"])
 
     print(f"Enqueued {len(unscored)} to score, {len(needs_cl)} for coverletter at {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    emailer(len(unscored), len(needs_cl))
 
 
 @celery_app.task(name="celery_tasks.job_scoring_task")
@@ -78,7 +104,20 @@ def job_scoring_task(job_id: int):
 
     result = calculate_job_score(job)
     supabase.table("jobs").update({"score": result['final_score'], "score_breakdown": result['score_breakdown'], "scored_at": datetime.now().isoformat()}).eq("id", job["id"]).execute()
-
+    if result['final_score'] >= 60:
+        send_email(
+            subject=f"⭐ High score job: {job['title']} at {job['company']} ({result['final_score']})",
+            body=f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                <h2 style="color: #1a1a1a;">High Score Job Found</h2>
+                <p><strong>{job['title']}</strong> at <strong>{job['company']}</strong></p>
+                <p>Score: <span style="color: #f59e0b; font-size: 24px; font-weight: bold;">{result['final_score']}</span></p>
+                <p style="color: #666;">{job.get('location', 'Location unknown')}</p>
+                <a href="{job.get('url', '#')}" style="display: inline-block; margin-top: 12px; padding: 10px 20px; background: #1a1a1a; color: white; text-decoration: none; border-radius: 4px;">View Job</a>
+            </div>
+            """,
+            html=True
+        )
     if result['final_score'] >= THRESHOLD_PRE_CL:
         print(f"Generating coverletter for job {job_id} with score {result['final_score']}")
         generate_coverletter.delay(job_id)
