@@ -19,7 +19,7 @@ HEADLESS = os.getenv("HEADLESS")
 new_jobs = []
 keywords = ['"fall"', '"sept"', '"september"', '"autumn"']
 locations = ['USA', 'Canada', 'Singapore', 'UK', 'Germany', 'Japan']
-time_seconds = 43200*10
+time_seconds = 43200
 INCLUDE = [
     "software", "computer science", "computer", "machine learning",
     "programmer", "coder", "developer", "data", "artificial intelligence",
@@ -78,7 +78,7 @@ for location in locations:
                 }
             )
             
-            
+            existing_urls = set(row["url"] for row in response.data)
             soup = BeautifulSoup(response.text, "html.parser")
             jobs = soup.find_all("div", class_="base-card")
             if not jobs:
@@ -89,16 +89,19 @@ for location in locations:
                 title_el = job.select_one("[class*=_title]")
                 title = title_el.get_text(strip=True) if title_el else None
                 if not title:
+                    print("SKIP: no title")
                     continue
                 
                 title_lower = title.lower()
                 if any(kw in title_lower for kw in EXCLUDE):
+                    print(f"SKIP EXCLUDE: {title}")
                     continue
                 if not matches_include(title_lower):
+                    print(f"SKIP INCLUDE: {title}")
                     continue
                 if not any(kw.strip('"') in title_lower for kw in keywords):
+                    print(f"SKIP KEYWORD: {title}")
                     continue
-
                 company_el = job.select_one("[class*=_subtitle]")
                 location_el = job.select_one("[class*=_location]")
                 url_el = job.select_one("[class*=_full-link]")
@@ -142,7 +145,8 @@ for location in locations:
                     "company_desc": company_desc,
                 }
                 
-                supabase.table("jobs").insert(item).execute()
+                supabase.table("jobs").insert(item).execute()               
+                existing_urls.add(url) 
                 new_jobs.append({'title': title, 'company': item["company"]})
                 print(f"Found: {new_jobs[-1]}")
                 
