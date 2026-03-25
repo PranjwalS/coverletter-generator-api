@@ -10,11 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.2.4",
     "@supabase/supabase-js": "^2.93.1",
     "@tanstack/react-table": "^8.21.3",
     "@tsparticles/engine": "^3.9.1",
     "@tsparticles/react": "^3.0.0",
     "@tsparticles/slim": "^3.9.1",
+    "class-variance-authority": "^0.7.1",
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.577.0",
     "motion": "^12.38.0",

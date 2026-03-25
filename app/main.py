@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from datetime import datetime
 import os
 from pydantic import BaseModel
-from openai import OpenAI
+import google.generativeai as genai
 from io import BytesIO
 from supabase import create_client
 
@@ -28,12 +28,11 @@ app.add_middleware(
 )
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-HF_API_TOKEN = os.getenv("HF_API_TOKEN")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-client = OpenAI(
-    base_url="https://router.huggingface.co/v1",
-    api_key=HF_API_TOKEN,
-)
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel("gemini-2.0-flash")
 
 #### Classes
 class TextData(BaseModel):
@@ -74,13 +73,15 @@ def generate_coverletter(data: JobRequest):
 
     # Cover letter
     prompt = makePrompt(job["title"], job["company"], job["job_desc"], job["company_desc"])
-    completion = client.chat.completions.create(
-        model="meta-llama/Llama-3.1-8B-Instruct",
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=500,
-        temperature=0.4,
+    response = model.generate_content(
+        prompt,
+        generation_config={
+            "max_output_tokens": 500,
+            "temperature": 0.4,
+        }
     )
-    output = completion.choices[0].message.content
+    output = response.text if response.text else "Error generating response"    
+    
     final_output = (
         output.strip() + "\n\n" +
         cv_summary_1.strip() + "\n\n" +
