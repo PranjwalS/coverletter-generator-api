@@ -1,0 +1,12 @@
+{
+  "folders": [
+    {
+      "name": "Backend",
+      "path": "."
+    },
+    {
+      "name": "Frontend",
+      "path": "job_dashboard"
+    }
+  ]
+}

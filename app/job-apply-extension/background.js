@@ -1,6 +1,5 @@
 // background.js — message router + backend relay
-
-const BACKEND_URL = "http://localhost:8001"; // swap for prod URL later
+import { BACKEND_URL } from "./config.js";  // prod has diff
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 

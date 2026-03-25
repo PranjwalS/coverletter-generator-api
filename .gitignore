@@ -28,3 +28,4 @@ app/job-apply-extension/profile.json
 
 app/profile.json
 job_dashboard/node_modules
+/app/job-apply-extension/config.js
