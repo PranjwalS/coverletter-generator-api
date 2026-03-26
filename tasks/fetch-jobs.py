@@ -78,7 +78,7 @@ for location in locations:
                 }
             )
             
-            existing_urls = set(row["url"] for row in response.data)
+            
             soup = BeautifulSoup(response.text, "html.parser")
             jobs = soup.find_all("div", class_="base-card")
             if not jobs:
