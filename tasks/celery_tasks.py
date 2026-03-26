@@ -76,10 +76,10 @@ def emailer(unscored_count, cl_count):
 @celery_app.task(name="enqueue_scoring_jobs")
 def enqueue_scoring_jobs():
     # unscored jobs
-    unscored = supabase.table("jobs").select("*").eq("processed_coverletter", False).is_("scored_at", "null").range(0, 5).execute().data or []
+    unscored = supabase.table("jobs").select("*").eq("processed_coverletter", False).is_("scored_at", "null").range(0, 10).execute().data or []
     
     # scored but no coverletter yet (above threshold)
-    needs_cl = supabase.table("jobs").select("*").eq("processed_coverletter", False).not_.is_("scored_at", "null").gte("score", THRESHOLD_PRE_CL).range(0, 5).execute().data or []
+    needs_cl = supabase.table("jobs").select("*").eq("processed_coverletter", False).not_.is_("scored_at", "null").gte("score", THRESHOLD_PRE_CL).range(0, 10).execute().data or []
 
     for job in unscored:
         job_scoring_task.delay(job["id"])
