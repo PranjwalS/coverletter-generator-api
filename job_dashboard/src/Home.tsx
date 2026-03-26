@@ -94,7 +94,7 @@ const StatCard = ({ value, label, delay = 0 }: { value: string; label: string; d
         <div className="absolute top-0 left-0 w-6 h-6 border-t border-l border-amber-500/30 pointer-events-none" />
         <div className="absolute bottom-0 right-0 w-6 h-6 border-b border-r border-amber-500/30 pointer-events-none" />
         <div className="relative z-10">
-          <div className="font-display text-5xl font-black text-amber-400 tracking-tight mb-2">
+          <div className=" text-5xl font-black text-amber-400 tracking-tight mb-2">
             {inView ? value : "—"}
           </div>
           <div className="text-zinc-500 text-xs font-mono uppercase tracking-[0.15em]">{label}</div>
@@ -125,7 +125,7 @@ const FeatureCard = ({ icon, title, description, index }: FeatureCardProps) => {
           {icon}
         </div>
         <div>
-          <h3 className="font-display text-xl font-black text-zinc-100 tracking-tight mb-2">{title}</h3>
+          <h3 className=" text-xl font-black text-zinc-100 tracking-tight mb-2">{title}</h3>
           <p className="text-zinc-500 text-xs leading-relaxed font-mono">{description}</p>
         </div>
         <div className="mt-auto flex items-center gap-2 text-amber-500/0 group-hover:text-amber-500/60 transition-all duration-300">
@@ -154,8 +154,8 @@ const Step = ({ number, title, description, index }: StepProps) => {
       <GlowingEffect spread={35} glow={false} disabled={false} proximity={64} inactiveZone={0.05} borderWidth={2} />
       <div className="relative z-10 h-full border border-zinc-800/40 p-7">
         <div className="absolute top-0 left-0 w-10 h-10 border-t border-l border-amber-500/20 group-hover:border-amber-500/40 transition-all duration-500 pointer-events-none" />
-        <div className="font-display text-6xl font-black text-zinc-800/50 group-hover:text-amber-500/15 transition-all duration-500 leading-none mb-5">{number}</div>
-        <h3 className="font-display font-black text-zinc-100 text-2xl mb-3 tracking-tight">{title}</h3>
+        <div className=" text-6xl font-black text-zinc-800/50 group-hover:text-amber-500/15 transition-all duration-500 leading-none mb-5">{number}</div>
+        <h3 className=" font-black text-zinc-100 text-2xl mb-3 tracking-tight">{title}</h3>
         <p className="text-zinc-500 text-sm leading-relaxed font-mono">{description}</p>
       </div>
     </motion.div>
@@ -218,16 +218,16 @@ const Hero = ({ topJob }: { topJob: SupabaseJob | null }) => {
 
   return (
     <section ref={containerRef} className="relative min-h-screen flex flex-col justify-center overflow-hidden pt-16">
-      <div className="absolute inset-0 z-0">
-        <FallingPattern
-          color="rgba(245,158,11,0.4)"
-          backgroundColor="#09090b"
-          duration={120}
-          blurIntensity="0.8em"
-          density={1}
-          className="h-full w-full [mask-image:radial-gradient(ellipse_80%_60%_at_50%_40%,transparent_30%,#09090b_80%)]"
-        />
-      </div>
+    <div className="absolute inset-0 z-0">
+      <FallingPattern
+        backgroundColor="#050505"
+        color="rgba(255, 163, 3, 0.81)"
+        blurIntensity="0.4em"
+        duration={160}
+        density={1.4}
+        className="h-full w-full [mask-image:radial-gradient(ellipse_80%_60%_at_50%_40%,transparent_10%,#09090b_90%)]"
+      />
+    </div>
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] pointer-events-none z-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(245,158,11,0.08)_0%,_transparent_65%)]" />
       </div>
@@ -362,7 +362,7 @@ const Hero = ({ topJob }: { topJob: SupabaseJob | null }) => {
       </div>
       {topJob ? (
         <>
-          <div className="font-display font-black text-zinc-100 text-sm mb-1 truncate">{topJob.title}</div>
+          <div className=" font-black text-zinc-100 text-sm mb-1 truncate">{topJob.title}</div>
           <div className="text-zinc-500 text-xs font-mono mb-4 truncate">{topJob.company}{topJob.location ? ` · ${topJob.location}` : ""}</div>
           <div className="flex items-center gap-3">
             <div className="flex-1 h-[2px] bg-zinc-800 overflow-hidden">
@@ -464,7 +464,7 @@ const DashboardPreview = ({
               <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
               <span className="text-[11px] font-mono uppercase tracking-[0.2em] text-amber-500/80">Live Dashboard</span>
             </motion.div>
-            <h2 className="font-display text-5xl md:text-7xl font-black tracking-tight text-zinc-100 leading-[0.9]">
+            <h2 className=" text-5xl md:text-7xl font-black tracking-tight text-zinc-100 leading-[0.9]">
               YOUR FEED.
               <br />
               <span className="text-amber-400">RANKED.</span>
@@ -477,7 +477,7 @@ const DashboardPreview = ({
           <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
             <div className="flex items-center gap-2">
               <Zap className="w-4 h-4 text-amber-400" />
-              <span className="font-display font-black text-zinc-200 text-sm tracking-tight">JOBSCOUT</span>
+              <span className=" font-black text-zinc-200 text-sm tracking-tight">JOBSCOUT</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="text-[10px] font-mono text-zinc-500 border border-zinc-800 px-2 py-1">
@@ -507,7 +507,7 @@ const DashboardPreview = ({
             {topFive.length > 0 ? topFive.map((job) => (
               <div key={job.id} className="flex items-center justify-between border border-zinc-800/60 bg-zinc-950/40 p-3 gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="font-display font-black text-zinc-200 text-xs truncate">{job.title}</div>
+                  <div className=" font-black text-zinc-200 text-xs truncate">{job.title}</div>
                   <div className="text-[10px] font-mono text-zinc-600 truncate">
                     {job.company}{job.location ? ` · ${job.location}` : ""}
                   </div>
@@ -610,7 +610,7 @@ export default function Home() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-              className="font-display text-5xl lg:text-6xl font-black tracking-tight text-zinc-100 leading-[0.9] max-w-lg"
+              className=" text-5xl lg:text-6xl font-black tracking-tight text-zinc-100 leading-[0.9] max-w-lg"
             >
               EVERYTHING
               <br />
@@ -649,7 +649,7 @@ export default function Home() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-              className="font-display text-5xl lg:text-6xl font-black tracking-tight text-zinc-100 leading-[0.9]"
+              className=" text-5xl lg:text-6xl font-black tracking-tight text-zinc-100 leading-[0.9]"
             >
               THREE
               <br />
@@ -726,7 +726,7 @@ export default function Home() {
             <div className="w-6 h-6 border border-amber-500/30 flex items-center justify-center">
               <Zap className="w-3 h-3 text-amber-400/70" />
             </div>
-            <span className="font-display font-black text-zinc-700 text-sm tracking-tight">JOBSCOUT</span>
+            <span className=" font-black text-zinc-700 text-sm tracking-tight">JOBSCOUT</span>
           </div>
           <span className="text-[11px] font-mono text-zinc-700 uppercase tracking-widest">
             Built for CS students hunting co-ops
