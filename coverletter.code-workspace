@@ -8,5 +8,7 @@
       "name": "Frontend",
       "path": "job_dashboard"
     }
-  ]
+  ],
+  "settings": {
+  }
 }
