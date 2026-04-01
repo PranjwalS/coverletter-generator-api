@@ -15,12 +15,12 @@
  ✅ Never mind the crawler ended up as a cron job on github actions
 
  ✅ UI general polish; finalize both dashboards
- ❌ Upstash setup AND PUT CELERY ON ORACLE VM
+ ✅ Upstash setup AND PUT CELERY ON GOOGLE VM
  ✅ Clean up all the code in the repo and reorganize everything, cut out unneccessary, absorb the frontend into this repo.
  ❌ Make readme.md properly and just document all.
  
  ✅ Supabase production setup
  ✅ VM with nginx+gunicorn+uvicorn with ngrok static url for backend
  ✅ Vercel for frontend
- ❌ Connect entire pipeline end to end in production and create some script that cleanly brings together all of the user's accnt across diff platforms basically.
+ ✅ Connect entire pipeline end to end in production and create some script that cleanly brings together all of the user's accnt across diff platforms basically.
  ```
