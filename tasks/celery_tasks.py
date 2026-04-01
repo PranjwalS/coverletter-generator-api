@@ -40,6 +40,10 @@ celery_app.conf.update(
     result_serializer="json",
     broker_use_ssl={"ssl_cert_reqs": 0},
     redis_backend_use_ssl={"ssl_cert_reqs": 0},
+    broker_transport_options={     
+        "polling_interval": 60,
+        "visibility_timeout": 3600,
+    },
     beat_schedule={
         "run-coverletter-pipeline-every-30-min": {
             "task": "enqueue_scoring_jobs",
