@@ -35,34 +35,7 @@ JobScout scrapes job listings on a schedule, runs each one through a weighted sc
 ## Architecture
 
 ```
-GitHub Actions (cron, every 4h)
-        │
-        ▼
-  Scraper jobs (LinkedIn API + Playwright fallback)
-        │
-        ▼
-   Supabase DB ◄──────────────────────────────────────────────┐
-        │                                                      │
-        ▼                                                      │
-  Scoring pipeline (Python weighted rubric)                    │
-        │                                                      │
-        ├──► Email digest (SMTP)                               │
-        │                                                      │
-        ▼                                                      │
-  FastAPI (GCP VM, Nginx → Gunicorn → Uvicorn)                 │
-        │                                                      │
-        ├──► /score, /cover-letter, /autofill-profile          │
-        │          (Groq LLM calls)                            │
-        │                                                      │
-        ├──► Celery Beat (hourly, Upstash Redis broker)        │
-        │                                                      │
-        ▼                                                      │
-  Vercel (React frontend)                                      │
-        │                                                      │
-        ├──► Dashboard (job feed, score cards, analytics)      │
-        ├──► Applied Dashboard (pipeline, heatmap, feedback)   │
-        └──► Chrome extension ──────────────────────────────── ┘
-             (DOM autofill on job forms)
+![JobScout Architecture](./assets/architecture.svg)
 ```
 
 ---
