@@ -9,7 +9,7 @@ Last update on : 09-05-2026
 
 - [x] `schemas.md` — finalize all data schemas
 - [x] `models.py` — define all ORM / pydantic models
-- [ ] Make entities on Supabase — create tables, relationships, RLS policies
+- [x] Make entities on Supabase — create tables, relationships, RLS policies
 - [ ] Setup scraper pipeline in `scraper.py`
 - [ ] Populate `jobs` table via scraper
 - [ ] Populate `user_jobs` from jobs
