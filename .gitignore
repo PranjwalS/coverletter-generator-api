@@ -19,7 +19,7 @@ Thumbs.db
 #env
 .env
 .env.*
-
+**/backend.env
 
 # Ignore secrets folder
 secrets/
