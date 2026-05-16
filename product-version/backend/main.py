@@ -33,7 +33,6 @@ app.add_middleware(
 )
 
 bearer_scheme = HTTPBearer()
-
 # Cache JWKS keys
 _jwks_cache = None
 
@@ -129,7 +128,7 @@ def create_user(user: UserCreate):
     except Exception as e:
         print(f"Profile insert error: {e}")
 
-    # Sign in to get token
+ ### sign in to fetch the jwt token and hold onto it to maintain state on frontend side
     try:
         sign_in = supabase.auth.sign_in_with_password({
             "email": user.email,
