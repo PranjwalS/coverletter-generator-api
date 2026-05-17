@@ -33,7 +33,6 @@ app.add_middleware(
 )
 
 bearer_scheme = HTTPBearer()
-# Cache JWKS keys
 _jwks_cache = None
 
 def get_jwks():
