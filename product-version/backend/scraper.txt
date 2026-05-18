@@ -1,0 +1,11 @@
+1. setup list of proper keywords to be provided, it'll be like checkboxes, used durin dashboard creation by the user, 
+so basically keep a limited set of keywords to work with. 
+split into four parts; skills && fields && EXCLUDES
+skills; ie; react, python, c++....
+fields; ie; data, ai, full stack....
+exclude skills; ie; swimming, driver's liscense....
+exclude
+
+from there;
+back in scraper logic;
+    create two sets
