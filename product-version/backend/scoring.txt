@@ -1,0 +1,8 @@
+start with some pseudo code for a 3 layered scoring system
+    score 1 => cv to job desc
+    score 2 => job desc to cv
+    (averaged out presented of the 1 and 2)
+    score 3 => purely subjective review from llm on top of jobs based on 1 and 2 averaged
+
+
+Logic pseudo;   

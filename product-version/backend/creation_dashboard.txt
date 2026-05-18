@@ -1,0 +1,10 @@
+pseudo ideas for the actual dashboard creation, will work alongside a main.py endpoint called from front by user, this is the spot showing all the possibilities to user
+as in;
+    all skills available
+    all locations available
+    all fields available
+
+    As well as allowing the basic settings like;
+        dashboard name
+        dashboard importance
+        
