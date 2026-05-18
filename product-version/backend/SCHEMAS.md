@@ -38,11 +38,27 @@ Per-user dashboard configurations. Each user can have multiple dashboards (e.g.,
 CREATE TABLE dashboard_configs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    name TEXT NOT NULL, -- "Fall 2026 Software Jobs", "Summer 2027 ML Internships"
-    keywords JSONB NOT NULL, -- ["software engineer", "full stack", "react"]
-    locations JSONB, -- ["remote", "toronto", "waterloo"]
-    seasons JSONB, -- ["fall_2026", "winter_2027"]
-    min_score_threshold INTEGER DEFAULT 30, -- Only show jobs scoring above this
+    name TEXT NOT NULL,                                    -- "Fall 2026 Software Jobs"
+
+    -- Include filters (used at scrape time + per-user filtering)
+    include_skills JSONB NOT NULL DEFAULT '[]',            -- ["react", "python"]
+    include_fields JSONB NOT NULL DEFAULT '[]',            -- ["software engineer", "ml engineer"]
+    include_locations JSONB NOT NULL DEFAULT '[]',         -- ["toronto", "remote"]
+
+    -- Exclude filters (per-user only, never at scrape time)
+    exclude_skills JSONB NOT NULL DEFAULT '[]',            -- ["cobol", "salesforce"]
+    exclude_fields JSONB NOT NULL DEFAULT '[]',            -- ["manager", "director"]
+    exclude_locations JSONB NOT NULL DEFAULT '[]',         -- ["usa"]
+
+    -- Job type (maps to LinkedIn f_JT at scrape time)
+    job_types JSONB NOT NULL DEFAULT '["internship", "co-op"]', -- ["internship", "full-time"]
+
+    -- Seasons
+    seasons JSONB DEFAULT '["fall_2026"]',                 -- ["fall_2026", "winter_2027"]
+
+    -- Scoring
+    min_score_threshold INTEGER DEFAULT 30,
+
     active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
