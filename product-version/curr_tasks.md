@@ -3,7 +3,23 @@
 
 ---
 
-Last update on : 09-05-2026
+Last update on : 17-05-2026
+
+
+
+CURRENT NOTES;
+
+
+
+backend pseudo → code + test → frontend refinement (grids, filtering, search) → add endpoints as needed → then LLM mock interview + auto-apply extension AND finally auto-apply bot BEFORE EXPANDING
+the extension (Apply AI) you already have architecture for so that's just finishing it
+one thing — don't forget the subscription/paywall layer before you call it MVP launch. that's the monetization piece and it needs to exist before you go public, even if it's just Stripe basic
+
+
+
+
+
+
 
 ## 🗄️ Backend & Data Layer
 

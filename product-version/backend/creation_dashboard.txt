@@ -3,8 +3,19 @@ as in;
     all skills available
     all locations available
     all fields available
+        (fetches from some backend .json file with all skills and locations and all fields possibilities)
+        (INCLUDES AND EXCLUDES for all 3 above)
 
     As well as allowing the basic settings like;
         dashboard name
         dashboard importance
-        
+        dashboard job_type
+        ... etc (for later to figure out)
+
+    As well as allowing misc stuff like (user optional);
+        salary
+        requirements
+        season (if co-op/internship) and length of work (contract, co-op, etc)
+
+    
+and also some endpoints that manage providing logs on new jobs, as well as sending emails/notifications regarding high scoring jobs and whatnot.
