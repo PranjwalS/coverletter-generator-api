@@ -75,22 +75,30 @@ Canonical job postings scraped from various sources. **Shared across all users**
 
 ```sql
 CREATE TABLE jobs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    url TEXT UNIQUE NOT NULL, -- Deduplication key
-    title TEXT NOT NULL,
-    company TEXT NOT NULL,
-    location TEXT,
-    description TEXT, -- Full job description
-    source TEXT, -- 'linkedin', 'indeed', 'greenhouse', etc.
-    season TEXT, -- 'fall_2026', 'summer_2027', etc.
-    scraped_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    url             TEXT UNIQUE NOT NULL,
+    title           TEXT NOT NULL,
+    company         TEXT NOT NULL,
+    location        TEXT,
+    locations       TEXT[],
+    description     TEXT,
+    source          TEXT,
+    season          TEXT,
+    fields          TEXT[],
+    skills          TEXT[],
+    requirements    JSONB,
+    salary          JSONB,
+    duration        TEXT,
+    scraped_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX idx_jobs_url ON jobs(url);
-CREATE INDEX idx_jobs_season ON jobs(season);
-CREATE INDEX idx_jobs_scraped_at ON jobs(scraped_at);
-CREATE INDEX idx_jobs_company ON jobs(company);
+CREATE UNIQUE INDEX idx_jobs_url        ON jobs(url);
+CREATE INDEX idx_jobs_season            ON jobs(season);
+CREATE INDEX idx_jobs_scraped_at        ON jobs(scraped_at);
+CREATE INDEX idx_jobs_company           ON jobs(company);
+CREATE INDEX idx_jobs_fields            ON jobs USING GIN(fields);
+CREATE INDEX idx_jobs_skills            ON jobs USING GIN(skills);
 ```
 
 **Scraping Strategy:**

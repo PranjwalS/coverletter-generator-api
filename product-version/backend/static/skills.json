@@ -1,0 +1,46 @@
+{
+  "languages": [
+    "Python", "JavaScript", "TypeScript", "Java", "C", "C++", "C#",
+    "Go", "Rust", "Swift", "Kotlin", "Ruby", "PHP", "Scala", "R",
+    "MATLAB", "Bash", "PowerShell", "Dart", "Elixir", "Haskell", "Lua"
+  ],
+  "frontend": [
+    "React", "Vue", "Angular", "Next.js", "Nuxt", "Svelte",
+    "HTML", "CSS", "Tailwind", "SASS", "Webpack", "Vite",
+    "Three.js", "D3.js", "Framer Motion", "Redux", "GraphQL"
+  ],
+  "backend": [
+    "Node.js", "FastAPI", "Django", "Flask", "Spring Boot", "Express",
+    "Rails", "Laravel", "ASP.NET", "gRPC", "REST", "WebSockets",
+    "Celery", "Kafka", "RabbitMQ", "SignalR"
+  ],
+  "databases": [
+    "PostgreSQL", "MySQL", "MongoDB", "Redis", "SQLite", "Supabase",
+    "Firebase", "Cassandra", "DynamoDB", "Elasticsearch", "Neo4j",
+    "ClickHouse", "Snowflake", "BigQuery"
+  ],
+  "devops_cloud": [
+    "Docker", "Kubernetes", "AWS", "GCP", "Azure", "Terraform",
+    "Ansible", "Jenkins", "GitHub Actions", "CircleCI", "ArgoCD",
+    "Grafana", "Prometheus", "Datadog", "Linux", "Nginx"
+  ],
+  "ml_ai": [
+    "PyTorch", "TensorFlow", "scikit-learn", "Pandas", "NumPy",
+    "Hugging Face", "LangChain", "OpenCV", "NLTK", "spaCy",
+    "XGBoost", "LightGBM", "JAX", "ONNX", "MLflow", "Ray"
+  ],
+  "mobile": [
+    "React Native", "Flutter", "SwiftUI", "Jetpack Compose",
+    "Expo", "Xcode", "Android Studio"
+  ],
+  "tools_misc": [
+    "Git", "GitHub", "Jira", "Figma", "Postman", "Vim",
+    "VS Code", "IntelliJ", "Notion", "Confluence", "Power BI",
+    "Tableau", "Excel", "Spark", "Hadoop", "Airflow"
+  ],
+  "exclude_suggestions": [
+    "Swimming", "Driver's License", "Forklift", "Welding",
+    "COBOL", "Salesforce", "SAP", "Workday", "QuickBooks",
+    "Photoshop", "Illustrator", "InDesign", "WordPress"
+  ]
+}
