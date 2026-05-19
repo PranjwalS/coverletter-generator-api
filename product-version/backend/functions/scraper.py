@@ -6,6 +6,7 @@ import sys
 import time
 from datetime import datetime
 from difflib import SequenceMatcher
+import json, pathlib
 
 import requests
 from bs4 import BeautifulSoup
@@ -17,243 +18,108 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+
+
+DATA_DIR = pathlib.Path(__file__).parent.parent / "data"
+
+FIELDS_DATA    = json.loads((DATA_DIR / "fields.json").read_text())
+LOCATIONS_DATA = json.loads((DATA_DIR / "locations.json").read_text())
+
+FIELD_SUPERSET = {f["value"]: f["superset"] for f in FIELDS_DATA["fields"]}
+LOCATION_TO_COUNTRY = {loc["value"].lower(): loc["country"] for loc in LOCATIONS_DATA["locations"]}
+
+
 REQUEST_DELAY   = 2
-TIME_SECONDS    = 21600
-MAX_JOBS_TOTAL  = 100_000
+TIME_SECONDS    = 21600  ## 6 Hours
+MAX_JOBS_TOTAL  = 100_000  ## per scrape
 BASE_DEPTH      = 250
 MAX_DEPTH       = 5000
 
-FIELD_SUPERSET: dict[str, str] = {
-    "ai":             "software",
-    "ml":             "software",
-    "machine learning": "software",
-    "nlp":            "software",
-    "computer vision": "software",
-    "full stack":     "software",
-    "fullstack":      "software",
-    "backend":        "software",
-    "frontend":       "software",
-    "web":            "software",
-    "mobile":         "software",
-    "ios":            "software",
-    "android":        "software",
-    "data engineer":  "software",
-    "data science":   "software",
-    "analytics":      "software",
-    "devops":         "software",
-    "cloud":          "software",
-    "platform":       "software",
-    "infrastructure": "software",
-    "security":       "software",
-    "cybersecurity":  "software",
-    "database":       "software",
-    "embedded":       "engineering",
-    "firmware":       "engineering",
-    "hardware":       "engineering",
-    "mechanical":     "engineering",
-    "electrical":     "engineering",
-    "robotics":       "engineering",
-    "controls":       "engineering",
-    "systems":        "engineering",
-}
 
-LOCATION_TO_COUNTRY: dict[str, str] = {
-    "canada":        "Canada",
-    "toronto":       "Canada",
-    "waterloo":      "Canada",
-    "vancouver":     "Canada",
-    "montreal":      "Canada",
-    "ottawa":        "Canada",
-    "calgary":       "Canada",
-    "edmonton":      "Canada",
-    "remote canada": "Canada",
-    "usa":           "USA",
-    "united states": "USA",
-    "new york":      "USA",
-    "san francisco": "USA",
-    "seattle":       "USA",
-    "austin":        "USA",
-    "boston":        "USA",
-    "chicago":       "USA",
-    "los angeles":   "USA",
-    "remote":        "Remote",
-    "remote us":     "USA",
-    "uk":            "UK",
-    "united kingdom": "UK",
-    "london":        "UK",
-    "germany":       "Germany",
-    "berlin":        "Germany",
-    "munich":        "Germany",
-    "singapore":     "Singapore",
-    "japan":         "Japan",
-    "tokyo":         "Japan",
-}
-
-EXCLUDE_TITLE_TERMS: list[str] = [
-    "professor", "faculty", "lecturer", "instructor",
-    "nursing", "clinical", "physician", "psychology",
-    "law", "biology", "chemistry",
-    "music", "coach", "cheerleading", "welding", "social work",
-    "custodial", "police", "child welfare", "fundraising", "yoga",
-    "spring 2027", "2027",
-]
-
-
-def get_country_depth(country: str, user_count: int) -> int:
-    return min(BASE_DEPTH * max(1, user_count), MAX_DEPTH)
-
-
+#-------------------------------------------------------------#
 def desc_similarity(a: str, b: str) -> float:
     if not a or not b:
         return 0.0
     return SequenceMatcher(None, a[:2000], b[:2000]).ratio()
 
 
-def map_location_to_country(loc: str) -> str:
-    key = loc.lower().strip()
-    for fragment, country in LOCATION_TO_COUNTRY.items():
-        if fragment in key:
-            return country
-    return loc
 
-
-def map_field_to_superset(field: str) -> str:
-    return FIELD_SUPERSET.get(field.lower().strip(), "other")
-
-
+#-------------------------------------------------------------#
+### Fetch all data from table, and create sets and search_matrix
 def fetch_all_dashboard_configs() -> list[dict]:
     resp = supabase.table("dashboard_configs").select(
-        "id, profile_id, include_skills, include_fields, exclude_skills, exclude_fields, locations, seasons"
+        "id, profile_id, include_skills, include_fields, include_locations, job_types"
     ).eq("active", True).execute()
     return resp.data or []
 
-
-def build_search_sets(configs: list[dict]) -> tuple[set, set, set, set, set]:
-    skills: set[str]         = set()
-    fields: set[str]         = set()
-    ex_skills: set[str]      = set()
-    ex_fields: set[str]      = set()
-    locations: set[str]      = set()
-    seasons: set[str]        = set()
+def build_sets(configs: list[dict]) -> tuple[set[str], set[str], set[str], set[str]]:
+    skills: set[str]    = set()
+    fields: set[str]    = set()
+    locations: set[str] = set()
+    job_types: set[str] = set()
 
     for cfg in configs:
         for s in (cfg.get("include_skills") or []):
             skills.add(s.lower().strip())
         for f in (cfg.get("include_fields") or []):
             fields.add(f.lower().strip())
-        for s in (cfg.get("exclude_skills") or []):
-            ex_skills.add(s.lower().strip())
-        for f in (cfg.get("exclude_fields") or []):
-            ex_fields.add(f.lower().strip())
-        for loc in (cfg.get("locations") or []):
-            locations.add(loc.strip())
-        for season in (cfg.get("seasons") or []):
-            seasons.add(season.lower().strip())
+        for loc in (cfg.get("include_locations") or []):
+            locations.add(loc.lower().strip())
+        for jt in (cfg.get("job_types") or []):
+            job_types.add(jt.lower().strip())
 
-    if not fields:
-        fields = {"software", "data", "devops", "ml", "full stack", "backend"}
-    if not locations:
-        locations = {"Canada", "USA", "Remote"}
-    if not seasons:
-        seasons = {"fall_2026"}
+    if not skills or not fields or not locations or not job_types:
+        print("[scraper] incomplete configs — exiting")
+        return set(), set(), set(), set()
 
-    return skills, fields, ex_skills, ex_fields, locations, seasons
+    return skills, fields, locations, job_types
 
 
-def build_search_matrix(
-    fields: set[str],
-    locations: set[str],
-    user_count: int,
-) -> tuple[list[tuple[str, str, str]], dict[str, int]]:
-    country_field_pairs: set[tuple[str, str]] = set()
+## go config by config, mapping importance of every search field by country to then fetch depth
+def compute_votes(configs: list[dict]) -> dict[tuple[str, str], int]:
+    votes: dict[tuple[str, str], int] = {}
+    for cfg in configs:
+        cfg_supersets = {FIELD_SUPERSET.get(f.lower().strip()) for f in (cfg.get("include_fields") or [])} - {None}
+        cfg_countries = {LOCATION_TO_COUNTRY.get(loc.lower().strip()) for loc in (cfg.get("include_locations") or [])} - {None}
+        for superset in cfg_supersets:
+            for country in cfg_countries:
+                votes[(superset, country)] = votes.get((superset, country), 0) + 1
+    return votes
 
-    country_user_counts: dict[str, int] = {}
+## will have to redesign depth logic in here though later!!
+def get_depth(superset: str, country: str, votes: dict[tuple[str, str], int]) -> int:
+    return min(BASE_DEPTH * max(1, votes.get((superset, country), 1)), MAX_DEPTH)
+
+
+def build_search_matrix(fields: set[str], locations: set[str], job_types: set[str], votes: dict[tuple[str, str], int]) -> list[tuple[str, str, str]]:
+    supersets: set[str] = set()
+    countries: set[str] = set()
+
+    for f in fields:
+        superset = FIELD_SUPERSET.get(f)
+        if superset:
+            supersets.add(superset)
+
     for loc in locations:
-        country = map_location_to_country(loc)
-        country_user_counts[country] = country_user_counts.get(country, 0) + 1
+        country = LOCATION_TO_COUNTRY.get(loc)
+        if country:
+            countries.add(country)
 
-    broad_categories: set[str] = set()
-    for field in fields:
-        broad_categories.add(map_field_to_superset(field))
+    if not supersets or not countries:
+        print("[scraper] couldn't map fields/locations to search matrix — exiting")
+        return []
 
-    for country in country_user_counts:
-        for cat in broad_categories:
-            country_field_pairs.add((country, cat))
-
-    job_types = ["intern", "co-op", "internship", "coop"]
-
-    search_matrix: list[tuple[str, str, str]] = []
-    for country, category in country_field_pairs:
-        for jtype in job_types:
-            keyword = f"{category} {jtype}"
-            search_matrix.append((keyword, country, jtype))
-
-    limits: dict[str, int] = {
-        country: get_country_depth(country, count)
-        for country, count in country_user_counts.items()
-    }
-
-    return search_matrix, limits
-
-
-def build_fall_terms(seasons: set[str]) -> list[str]:
-    base = [
-        "fall", "autumn", "sept", "september", "october", "november",
-        "f2026", "fall 2026", "fall2026", "fall co-op", "fall coop",
-        "fall intern", "fall term", "fall semester", "fall position",
-        "sep 2026", "sept 2026", "4-month", "4 month",
+    ## search configs:
+    return [
+        (f"{superset} {job_type}",  country, job_type, get_depth(superset, country, votes))
+        for superset in supersets
+        for country in countries
+        for job_type in job_types
     ]
-    for s in seasons:
-        readable = s.replace("_", " ")
-        compact  = s.replace("_", "")
-        base += [readable, compact, s]
-    return list(set(base))
+    
+    
+#-------------------------------------------------------------#
 
-
-def infer_season(combined: str, seasons: set[str]) -> str | None:
-    for s in seasons:
-        readable = s.replace("_", " ")
-        compact  = s.replace("_", "")
-        if readable in combined or compact in combined or s in combined:
-            return s
-    if any(t in combined for t in ["fall", "autumn", "sept", "september", "october"]):
-        return "fall_2026"
-    if any(t in combined for t in ["summer", "june", "july"]):
-        return "summer_2026"
-    if any(t in combined for t in ["winter", "january", "february"]):
-        return "winter_2027"
-    return None
-
-
-def is_season_relevant(combined: str, fall_terms: list[str], seasons: set[str]) -> bool:
-    if any(term in combined for term in fall_terms):
-        return True
-    evergreen_signals = [
-        "internship", "intern", "co-op", "coop", "co op",
-        "new grad", "graduate", "entry level", "entry-level",
-    ]
-    if any(s in combined for s in evergreen_signals):
-        exclude_other = ["spring 2026", "summer 2026", "winter 2026", "spring2026"]
-        if not any(ex in combined for ex in exclude_other):
-            return True
-    return False
-
-
-def layer1_field_in_title(title_lower: str, fields: set[str]) -> bool:
-    for field in fields:
-        if field == "ai":
-            if re.search(r'\bai\b', title_lower):
-                return True
-        elif field in title_lower:
-            return True
-    broad_title_signals = [
-        "software", "developer", "engineer", "programmer", "data",
-        "machine learning", "backend", "frontend", "fullstack", "full stack",
-        "devops", "cloud", "mobile", "ios", "android", "platform",
-        "infrastructure", "security", "embedded", "firmware", "nlp",
-        "computer vision", "robotics", "analytics", "database",
-    ]
-    return any(sig in title_lower for sig in broad_title_signals)
 
 
 def layer3_extract_metadata(
@@ -378,7 +244,6 @@ def run():
     print(f"[scraper] {user_count} active dashboard config(s) loaded")
 
     skills, fields, ex_skills, ex_fields, locations, seasons = build_search_sets(configs)
-    fall_terms = build_fall_terms(seasons)
 
     search_matrix, country_limits = build_search_matrix(fields, locations, user_count)
     print(f"[scraper] search matrix: {len(search_matrix)} trios | countries: {list(country_limits.keys())}")
