@@ -69,6 +69,7 @@ back in scraper logic;
         Map locations to countries and fields to broader categories
         Create a 4th set for searches involving identified countries AND categories AND job_type
         Setup limits logic allowed per search trio in the 4th set to optimize overall (get_country_depth , etc)
+        
         Run a scrape on every search trio, while counting the number of scraped as in while scraped <= limits[search_idx] && search_idx <= len(limits):
             start scrape logic based on info;
             if true in "Check for field in title":
