@@ -120,8 +120,8 @@ def build_search_matrix(fields: set[str], locations: set[str], job_types: set[st
     
 #-------------------------------------------------------------#
 
-
-
+#-------------------------------------------------------------#
+### Layer 3: extract metadata from title + description
 def layer3_extract_metadata(
     title: str,
     desc_text: str,
@@ -134,6 +134,15 @@ def layer3_extract_metadata(
     desc_lower  = desc_text.lower()
     combined    = title_lower + " " + desc_lower
 
+    ## --- exclude check first, bail early ---
+    for ex in ex_fields:
+        if ex in combined:
+            return [], [], None, None, None, False
+    for ex in ex_skills:
+        if re.search(rf'\b{re.escape(ex)}\b', combined):
+            return [], [], None, None, None, False
+
+    ## --- match fields ---
     matched_fields: list[str] = []
     for f in fields:
         if f == "ai":
@@ -142,10 +151,12 @@ def layer3_extract_metadata(
         elif f in combined:
             matched_fields.append(f)
 
-    for broad, _ in FIELD_SUPERSET.items():
+    ## also check superset keys (broad categories)
+    for broad in FIELD_SUPERSET:
         if broad in combined and broad not in matched_fields:
             matched_fields.append(broad)
 
+    ## --- match skills ---
     matched_skills: list[str] = []
     for s in skills:
         if s == "c":
@@ -157,31 +168,12 @@ def layer3_extract_metadata(
         elif s in combined:
             matched_skills.append(s)
 
-    additional_tech = [
-        "python", "javascript", "typescript", "react", "node", "vue", "angular",
-        "java", "kotlin", "swift", "go", "golang", "rust", "c++", "c#",
-        "sql", "postgresql", "mysql", "mongodb", "redis", "kafka", "spark",
-        "docker", "kubernetes", "aws", "gcp", "azure", "terraform",
-        "pytorch", "tensorflow", "scikit", "pandas", "numpy",
-        "fastapi", "django", "flask", "spring", "rails", "express",
-        "graphql", "rest", "grpc", "git", "linux", "bash",
-    ]
-    for tech in additional_tech:
-        if tech in combined and tech not in matched_skills:
-            matched_skills.append(tech)
-
-    for ex in ex_fields:
-        if ex in combined:
-            return [], [], None, None, None, False
-    for ex in ex_skills:
-        if re.search(rf'\b{re.escape(ex)}\b', combined):
-            pass
-
+    ## --- layer 4: salary ---
     salary: dict | None = None
     salary_patterns = [
         r'\$\s*(\d[\d,]*)\s*(?:k|,000)?\s*(?:[-–]\s*\$?\s*(\d[\d,]*)\s*(?:k|,000)?)?\s*(?:\/\s*(?:hr|hour|yr|year|annum))?',
         r'(\d+)\s*(?:k|,000)\s*(?:[-–]\s*(\d+)\s*(?:k|,000)?)?\s*(?:per\s+(?:year|hour|annum))?',
-        r'(?:salary|compensation|pay)[:\s]+\$?\s*(\d[\d,]+)',
+        r'(?:salary|compensation|pay|rate)[:\s]+\$?\s*(\d[\d,]+)',
     ]
     for pattern in salary_patterns:
         m = re.search(pattern, combined, re.IGNORECASE)
@@ -189,11 +181,15 @@ def layer3_extract_metadata(
             salary = {"raw": m.group(0).strip()}
             break
 
+    ## --- layer 4: requirements ---
     requirements: dict | None = None
     req_signals = [
-        "bachelor", "master", "degree", "pursuing", "enrolled",
-        "gpa", "3rd year", "4th year", "final year", "penultimate",
+        "bachelor", "master", "phd", "degree", "diploma",
+        "pursuing", "enrolled", "currently studying",
+        "gpa", "1st year", "2nd year", "3rd year", "4th year",
+        "final year", "penultimate", "recent graduate", "new grad",
         "years of experience", "year of experience",
+        "no experience", "entry level", "junior",
     ]
     found_reqs = [sig for sig in req_signals if sig in combined]
     if found_reqs:
@@ -201,13 +197,15 @@ def layer3_extract_metadata(
         snippet_end   = min(len(combined), snippet_start + 300)
         requirements  = {"signals": found_reqs, "snippet": combined[snippet_start:snippet_end]}
 
+    ## --- layer 4: duration/season ---
     duration: str | None = None
     duration_patterns = [
         r'(\d+)\s*[-–]?\s*month',
-        r'(4|8|12|16)\s*months?',
-        r'(one|two|three|four|six|eight|twelve|sixteen)\s*months?',
-        r'(fall|winter|summer|spring)\s+(?:term|semester|co-op|coop)',
-        r'(january|may|september)\s+\d{4}',
+        r'(fall|winter|summer|spring|autumn)\s+(?:term|semester|co-?op|internship|placement)',
+        r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}',
+        r'(q[1-4])\s+\d{4}',
+        r'(full[- ]?year|year[- ]?long|permanent|contract)',
+        r'(\d+)\s*(?:week|weeks)',
     ]
     for dp in duration_patterns:
         m = re.search(dp, combined, re.IGNORECASE)
@@ -219,6 +217,8 @@ def layer3_extract_metadata(
     return matched_fields, matched_skills, requirements, salary, duration, is_relevant
 
 
+#-------------------------------------------------------------#
+### Fetch full job description + tags from LinkedIn job posting
 def fetch_job_detail(job_id: str) -> tuple[str, list[str]]:
     try:
         resp = requests.get(
@@ -226,32 +226,73 @@ def fetch_job_detail(job_id: str) -> tuple[str, list[str]]:
             headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"},
             timeout=15,
         )
-        soup     = BeautifulSoup(resp.text, "html.parser")
-        desc_el  = soup.select_one("[class*=description] > section > div")
-        tags_el  = soup.select_one("[class*=_job-criteria-list]")
-        desc     = desc_el.get_text(separator=" ", strip=True) if desc_el else ""
-        tags     = [t.strip() for t in tags_el.get_text(separator="|").split("|") if t.strip()] if tags_el else []
+        soup    = BeautifulSoup(resp.text, "html.parser")
+        desc_el = soup.select_one("[class*=description] > section > div")
+        tags_el = soup.select_one("[class*=_job-criteria-list]")
+        desc    = desc_el.get_text(separator=" ", strip=True) if desc_el else ""
+        tags    = [t.strip() for t in tags_el.get_text(separator="|").split("|") if t.strip()] if tags_el else []
         return desc, tags
     except Exception:
         return "", []
 
 
+#-------------------------------------------------------------#
+### Layer 1: at least one user field must appear in the title
+def layer1_field_in_title(title_lower: str, fields: set[str]) -> bool:
+    for f in fields:
+        if f == "ai":
+            if re.search(r'\bai\b', title_lower):
+                return True
+        elif f in title_lower:
+            return True
+    ## also accept if a superset key appears in the title
+    for broad in FIELD_SUPERSET:
+        if broad in title_lower:
+            return True
+    return False
+
+
+#-------------------------------------------------------------#
+### Main scraper run
 def run():
     print(f"[scraper] run started at {datetime.now().isoformat()}")
 
+    ## --- pull configs ---
     configs = fetch_all_dashboard_configs()
-    user_count = max(len(configs), 1)
-    print(f"[scraper] {user_count} active dashboard config(s) loaded")
+    if not configs:
+        print("[scraper] no active configs — exiting")
+        return
 
-    skills, fields, ex_skills, ex_fields, locations, seasons = build_search_sets(configs)
+    print(f"[scraper] {len(configs)} active dashboard config(s) loaded")
 
-    search_matrix, country_limits = build_search_matrix(fields, locations, user_count)
-    print(f"[scraper] search matrix: {len(search_matrix)} trios | countries: {list(country_limits.keys())}")
+    ## --- build union sets across all users ---
+    skills, fields, locations, job_types = build_sets(configs)
+    if not skills or not fields or not locations or not job_types:
+        return
 
+    ex_skills: set[str] = set()
+    ex_fields: set[str] = set()
+    for cfg in configs:
+        for s in (cfg.get("exclude_skills") or []):
+            ex_skills.add(s.lower().strip())
+        for f in (cfg.get("exclude_fields") or []):
+            ex_fields.add(f.lower().strip())
+
+    ## --- compute votes and build search matrix ---
+    votes         = compute_votes(configs)
+    search_matrix = build_search_matrix(fields, locations, job_types, votes)
+
+    if not search_matrix:
+        print("[scraper] empty search matrix — exiting")
+        return
+
+    print(f"[scraper] search matrix: {len(search_matrix)} entries")
+
+    ## --- pull existing jobs into memory for dedup ---
     existing_resp = supabase.table("jobs").select("id, url, title, company, locations, description").execute()
     existing_rows = existing_resp.data or []
 
-    url_set: set[str] = set(r["url"] for r in existing_rows)
+    url_set: set[str] = {r["url"] for r in existing_rows}
     title_company_map: dict[tuple[str, str], dict] = {
         (r["title"].lower().strip(), r["company"].lower().strip()): r
         for r in existing_rows
@@ -259,21 +300,21 @@ def run():
 
     print(f"[scraper] {len(url_set)} existing jobs loaded into memory")
 
-    total_scraped = 0
+    ## --- scrape ---
+    total_inserted  = 0
     country_scraped: dict[str, int] = {}
 
-    for keyword, country, job_type in search_matrix:
-        if total_scraped >= MAX_JOBS_TOTAL:
+    for keyword, country, job_type, depth_limit in search_matrix:
+        if total_inserted >= MAX_JOBS_TOTAL:
             break
 
-        depth_limit = country_limits.get(country, BASE_DEPTH)
         if country_scraped.get(country, 0) >= depth_limit:
             continue
 
-        print(f"\n[scraper] keyword='{keyword}' | country='{country}'")
+        print(f"\n[scraper] keyword='{keyword}' | country='{country}' | depth={depth_limit}")
         start = 0
 
-        while start < MAX_START_PER_KEYWORD and total_scraped < MAX_JOBS_TOTAL:
+        while total_inserted < MAX_JOBS_TOTAL:
             if country_scraped.get(country, 0) >= depth_limit:
                 break
 
@@ -283,8 +324,8 @@ def run():
                     params={
                         "keywords": keyword,
                         "location": country,
-                        "f_TPR": f"r{TIME_SECONDS}",
-                        "start": start,
+                        "f_TPR":    f"r{TIME_SECONDS}",
+                        "start":    start,
                     },
                     headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
                     timeout=15,
@@ -293,47 +334,44 @@ def run():
                 print(f"[scraper] request error: {e}")
                 break
 
-            soup = BeautifulSoup(resp.text, "html.parser")
+            soup  = BeautifulSoup(resp.text, "html.parser")
             cards = soup.find_all("div", class_="base-card")
             if not cards:
                 break
 
             for card in cards:
+                ## --- pull basic card info ---
                 title_el = card.select_one("[class*=_title]")
-                title = title_el.get_text(strip=True) if title_el else None
+                title    = title_el.get_text(strip=True) if title_el else None
                 if not title:
                     continue
 
                 title_lower = title.lower()
 
-                if any(ex in title_lower for ex in EXCLUDE_TITLE_TERMS):
-                    continue
-
+                ## --- layer 1: field must appear in title ---
                 if not layer1_field_in_title(title_lower, fields):
                     continue
 
                 url_el = card.select_one("[class*=_full-link]")
-                url = url_el["href"].split("?")[0] if url_el else None
+                url    = url_el["href"].split("?")[0] if url_el and url_el.get("href") else None
                 if not url:
                     continue
 
-                company_el  = card.select_one("[class*=_subtitle]")
-                location_el = card.select_one("[class*=_location]")
-                company     = company_el.get_text(strip=True) if company_el else "Unknown"
+                company_el   = card.select_one("[class*=_subtitle]")
+                location_el  = card.select_one("[class*=_location]")
+                company      = company_el.get_text(strip=True)  if company_el  else "Unknown"
                 job_location = location_el.get_text(strip=True) if location_el else country
 
-                title_key   = title_lower.strip()
+                title_key = title_lower.strip()
                 company_key = company.lower().strip()
-                tc_key      = (title_key, company_key)
+                tc_key = (title_key, company_key)
 
+                ## --- fetch full description ---
                 job_id = url.split("-")[-1]
                 desc_text, tags = fetch_job_detail(job_id)
-                desc_lower = desc_text.lower()
-                combined   = title_lower + " " + desc_lower
+                time.sleep(REQUEST_DELAY)
 
-                if not is_season_relevant(combined, fall_terms, seasons):
-                    continue
-
+                ## --- layer 3 + 4: relevance + metadata ---
                 matched_fields, matched_skills, requirements, salary, duration, is_relevant = layer3_extract_metadata(
                     title, desc_text, skills, fields, ex_skills, ex_fields
                 )
@@ -341,31 +379,29 @@ def run():
                 if not is_relevant:
                     continue
 
-                inferred_season = infer_season(combined, seasons)
-
+                ## --- layer 2: dedup ---
                 if url in url_set:
                     continue
 
                 if tc_key in title_company_map:
-                    existing = title_company_map[tc_key]
-                    sim = desc_similarity(desc_text, existing.get("description") or "")
-
+                    existing     = title_company_map[tc_key]
+                    sim          = desc_similarity(desc_text, existing.get("description") or "")
                     existing_locs = existing.get("locations") or [existing.get("location", "")]
                     same_location = job_location in existing_locs
 
                     if sim > 0.85:
                         if same_location:
+                            ## repost — replace
                             try:
                                 supabase.table("jobs").update({
-                                    "url":          url,
-                                    "description":  desc_text,
-                                    "fields":       matched_fields,
-                                    "skills":       matched_skills,
-                                    "requirements": requirements,
-                                    "salary":       salary,
-                                    "duration":     duration,
-                                    "season":       inferred_season,
-                                    "scraped_at":   datetime.now().isoformat(),
+                                    "url":         url,
+                                    "description": desc_text,
+                                    "fields":      matched_fields,
+                                    "skills":      matched_skills,
+                                    "requirements":requirements,
+                                    "salary":      salary,
+                                    "duration":    duration,
+                                    "scraped_at":  datetime.now().isoformat(),
                                 }).eq("id", existing["id"]).execute()
                                 url_set.discard(existing["url"])
                                 url_set.add(url)
@@ -374,6 +410,7 @@ def run():
                             except Exception as e:
                                 print(f"[dedup] replace error: {e}")
                         else:
+                            ## same job, different location — merge
                             try:
                                 merged_locs = list(set(existing_locs + [job_location]))
                                 supabase.table("jobs").update({
@@ -386,6 +423,7 @@ def run():
                         url_set.add(url)
                         continue
 
+                ## --- layer 5: insert new job ---
                 item = {
                     "url":          url,
                     "title":        title,
@@ -394,7 +432,6 @@ def run():
                     "locations":    [job_location],
                     "description":  desc_text or None,
                     "source":       "linkedin",
-                    "season":       inferred_season,
                     "fields":       matched_fields,
                     "skills":       matched_skills,
                     "requirements": requirements,
@@ -408,17 +445,16 @@ def run():
                     url_set.add(url)
                     title_company_map[tc_key] = item
                     country_scraped[country]  = country_scraped.get(country, 0) + 1
-                    total_scraped            += 1
-                    print(f"[{total_scraped}] {title} @ {company} ({job_location})")
+                    total_inserted           += 1
+                    print(f"[{total_inserted}] {title} @ {company} ({job_location})")
                 except Exception as e:
                     if "duplicate" not in str(e).lower():
                         print(f"[scraper] insert error: {e}")
                     continue
 
             start += 10
-            time.sleep(REQUEST_DELAY)
 
-    print(f"\n[scraper] finished at {datetime.now().isoformat()} — {total_scraped} new jobs inserted")
+    print(f"\n[scraper] finished at {datetime.now().isoformat()} — {total_inserted} new jobs inserted")
 
 
 if __name__ == "__main__":
