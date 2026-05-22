@@ -24,6 +24,9 @@ CREATE TABLE profiles (
     education JSONB, -- Array: [{"institution": "...", "degree": "...", "field": "...", "start_date": "...", "end_date": "..."}]
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    cv_pdf_url TEXT,
+    cv_parsed_text TEXT,
+    cv_json JSONB,
 );
 
 CREATE INDEX idx_profiles_user_id ON profiles(user_id);
