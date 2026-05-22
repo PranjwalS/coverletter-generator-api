@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, File, HTTPException, UploadFile, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -184,3 +184,11 @@ def get_me(current_user=Depends(get_current_user)):
         "slug": current_user.get("slug"),
         "display_name": current_user.get("display_name"),
     }
+    
+@app.post("/cv/upload")
+async def upload_cv(file: UploadFile = File(...), current_user = Depends(get_current_user)):
+    path = f"{current_user["user_id"]}/cv.pdf"
+    file_bytes = await file.read()
+    supabase_admin.storage.from_("cvs").upload(path, file_bytes, {"upsert":"true"})
+    pdf_url = supabase_admin.storage.from_("cvs").get_public_url(path)
+    
