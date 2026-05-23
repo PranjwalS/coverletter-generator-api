@@ -92,7 +92,10 @@ Use this structure:
     {{
       "name": "",
       "description": [],
-      "tech_stack": []
+      "tech_stack": [],
+      "start_date": "",
+      "end_date": "",
+      "links": []
     }}
   ],
   "certifications_awards": [],

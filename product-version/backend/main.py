@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from supabase import create_client, Client
 from docling.document_converter import DocumentConverter
 from functions.cv_and_cl_gen import cv_parser
+import uuid
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "backend.env"), override=True)
 
@@ -37,6 +38,54 @@ app.add_middleware(
 bearer_scheme = HTTPBearer()
 _jwks_cache = None
 
+
+
+
+### classses
+
+class UserCreate(BaseModel):
+    full_name: str
+    email: str
+    password: str
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+    
+    
+class EducationEntry(BaseModel):
+    id: str = None
+    institution: str
+    degree: str
+    field: str
+    gpa: str | None
+    start_date: str
+    end_date: str
+    details: list[str]
+    
+class ExperienceEntry(BaseModel):
+    id: str = None
+    company: str
+    role: str
+    location: str
+    start_date: str
+    end_date: str
+    responsibilities: list[str]
+
+class ProjectsEntry(BaseModel):
+    id: str = None
+    name: str
+    description: str
+    start_date: str
+    end_date: str
+    links: list[str]
+    tech_stack: list[str]
+
+
+
+
+### helpers
 def get_jwks():
     global _jwks_cache
     if _jwks_cache:
@@ -66,15 +115,6 @@ def verify_supabase_jwt(token: str):
         return None
 
 
-class UserCreate(BaseModel):
-    full_name: str
-    email: str
-    password: str
-
-
-class UserLogin(BaseModel):
-    email: str
-    password: str
 
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
@@ -95,6 +135,11 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user")
 
+
+
+
+
+### endpoints
 
 @app.get("/", response_class=HTMLResponse)
 def root():
@@ -215,4 +260,15 @@ async def upload_cv(file: UploadFile = File(...), current_user = Depends(get_cur
 
 @app.get("/cv/get")
 async def get_cv(current_user = Depends(get_current_user)):
+    result = supabase_admin.table("profiles").select("*").eq("user_id", current_user["user_id"]).single().execute()
+    user_profile = result.data()
+    return {
+        "education": [EducationEntry(**e) for e in user_profile.get("education", []) if e],
+        "experience": [ExperienceEntry(**e) for e in user_profile.get("experience", []) if e],
+        "projects": [ProjectsEntry(**e) for e in user_profile.get("prokects", []) if e],
+        "skills": user_profile.get("skills")
+    }
+    
+@app.put("/cv/update")
+async def update_cv(current_user = Depends(get_current_user)):
     
