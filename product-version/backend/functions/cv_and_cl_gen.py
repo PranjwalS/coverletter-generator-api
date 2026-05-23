@@ -136,3 +136,99 @@ Now parse the CV carefully and return ONLY the JSON output.
     parsed = json.loads(output)
     return parsed
     
+
+
+
+def job_parser(job_description: str) -> dict:
+    prompt = f"""
+You are an expert job posting parser.
+
+Your output will be parsed automatically by a JSON parser.
+Invalid JSON will cause system failure.
+
+Extract structured information from the job posting below into strict JSON.
+
+## RULES
+1. ONLY extract information explicitly present in the posting.
+2. Do NOT infer, guess, or hallucinate anything.
+3. If a field is missing, return empty string "" or empty array [].
+4. Skills and requirements should be extracted as clean individual items, not full sentences.
+5. Fields means the job domain/category (e.g. "software engineering", "nursing", "legal", "accounting") — infer only from explicit context.
+
+## OUTPUT FORMAT (STRICT JSON ONLY)
+Return ONLY valid JSON. No markdown. No explanation.
+
+{{
+  "title": "",
+  "company": "",
+  "location": "",
+  "description": "",
+  "requirements": [],
+  "skills": [],
+  "salary": "",
+  "duration": "",
+  "fields": []
+}}
+
+## JOB POSTING
+{job_description}
+
+Now parse and return ONLY the JSON.
+"""
+    resp = groq_client.chat.completions.create(
+        messages=[
+            {{"role": "system", "content": "You are a precise job posting parser that outputs strict valid JSON only."}},
+            {{"role": "user", "content": prompt}},
+        ],
+        model="openai/gpt-oss-120b",
+        temperature=0
+    )
+    output = resp.choices[0].message.content
+    parsed = json.loads(output)
+    return parsed
+  
+  
+  
+  
+def cover_letter_generator(job: dict, user_profile: dict) -> str:
+    prompt = f"""
+You are helping a real person write a cover letter for a job they genuinely want.
+
+Your goal is to write something that sounds like a confident, self-aware human wrote it — not a template, not a robot.
+Do NOT use filler phrases like "I am excited to apply", "I am passionate about", "I would be a great fit".
+Do NOT mention skills or experiences not present in the profile.
+Do NOT fabricate anything.
+
+Write in first person. Keep it to 3 paragraphs. Be direct and specific.
+
+## WHO THEY ARE
+Name: {user_profile.get("display_name", "")}
+Skills: {user_profile.get("skills", "")}
+Experience: {json.dumps(user_profile.get("experiences", []))}
+Education: {json.dumps(user_profile.get("education", []))}
+Projects: {json.dumps(user_profile.get("projects", []))}
+
+## THE JOB
+Title: {job.get("title", "")}
+Company: {job.get("company", "")}
+Location: {job.get("location", "")}
+What they want: {json.dumps(job.get("requirements", []))}
+Skills they need: {json.dumps(job.get("skills", []))}
+Description: {job.get("description", "")}
+
+## INSTRUCTIONS
+- Paragraph 1: Open with why this specific role at this specific company makes sense for where they are in their career. Be concrete, not generic.
+- Paragraph 2: Pull the most relevant 1-2 experiences or projects from their profile that directly speak to what the job needs. Be specific about what they did and the impact.
+- Paragraph 3: Short, confident close. Express genuine interest, invite next steps. No begging, no over-enthusiasm.
+
+Return ONLY the cover letter text. No subject line. No "Dear Hiring Manager" header. No sign-off. Just the three paragraphs.
+"""
+    resp = groq_client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": "You write cover letters that sound like real humans wrote them — specific, confident, and grounded in the person's actual background."},
+            {"role": "user", "content": prompt},
+        ],
+        model="openai/gpt-oss-120b",
+        temperature=0.5
+    )
+    return resp.choices[0].message.content
