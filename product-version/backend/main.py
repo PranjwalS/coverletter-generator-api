@@ -1,3 +1,4 @@
+from pydantic import ValidationError
 from fastapi import FastAPI, Depends, File, HTTPException, UploadFile, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
@@ -100,6 +101,9 @@ class NewEntryRequest(BaseModel):
 class BulkAddRequest(BaseModel):
     adds: list[NewEntryRequest]
     
+class DeleteEntryRequest(BaseModel):
+    section: str
+    id: str
     
 ### helpers
 
@@ -298,7 +302,7 @@ async def get_cv(current_user = Depends(get_current_user)):
     
     
 @app.put("/cv/update")
-async def update_cv(body: UpdateEntryRequest, current_user = Depends(get_current_user)):
+async def update_cv(body: BulkUpdateRequest, current_user = Depends(get_current_user)):
     result = supabase_admin.table("profiles").select("*").eq("user_id", current_user["user_id"]).single().execute()
     profile = result.data
     
@@ -308,18 +312,29 @@ async def update_cv(body: UpdateEntryRequest, current_user = Depends(get_current
         "projects": "projects",
     }
     
+    section_model_map = {
+        "education": EducationEntry,
+        "experiences": ExperienceEntry,
+        "projects": ProjectsEntry,
+    }
+    
     # group updates by section so we only write each column once
     affected = {}
     for update in body.updates:
         column = section_map.get(update.section)
+        model = section_model_map.get(update.section)
         if not column:
             raise HTTPException(status_code=400, detail=f"Invalid section: {update.section}")
         if column not in affected:
             affected[column] = profile.get(column, [])
         for entry in affected[column]:
             if entry.get("id") == update.id:
-                entry.update(update.data)
-                break
+                try:
+                    entry.update(update.data)
+                    validated = model(**entry)
+                    break
+                except ValidationError as e:
+                    raise HTTPException(status_code=422, detail=str(e))
 
     for column, entries in affected.items():
         supabase_admin.table("profiles").update({
@@ -345,22 +360,86 @@ def get_careertwin_info(current_user = Depends(get_current_user)):
 
 @app.post("/careertwin/add_info")
 def add_careertwin_info(body: BulkAddRequest, current_user = Depends(get_current_user)):
+    result = supabase_admin.table("profiles").select("*").eq("user_id", current_user["user_id"]).single().execute()
+    profile = result.data
+    
     section_map = {
         "education": "education",
         "experiences": "experiences",
         "projects": "projects",
     }
     
+    section_model_map = {
+        "education": EducationEntry,
+        "experiences": ExperienceEntry,
+        "projects": ProjectsEntry,
+    }
     
-    
-    supabase_admin.table("profiles").update({
-        "cv_pdf_url" : pdf_url,
-        "cv_parsed_text": cv_information,
-        "cv_json": json_output,
-        "education": stamp_ids(json_output.get("education", [])),
-        "experiences": stamp_ids(json_output.get("experience", [])),
-        "projects": stamp_ids(json_output.get("projects", [])),
-        "skills": json_output.get("skills", {}).get("skills", ""),
-    }).eq("user_id", current_user["user_id"]).execute()
+    affected = {}
+    for add in body.adds:
+        column = section_map.get(add.section)
+        if not column:
+            raise HTTPException(status_code=400, detail=f"Invalid section: {add.section}")
+        
+        model = section_model_map.get(add.section)  # EducationEntry, ExperienceEntry etc
+        try:
+            validated = model(**add.data)
+        except ValidationError as e:
+            raise HTTPException(status_code=422, detail=str(e))        
+        
+        if column not in affected:
+            affected[column] = profile.get(column, [])
+        
+        entry = validated.dict()
+        entry["id"] = str(uuid.uuid4())
+        affected[column].append(entry)
 
-    return {"status": "ok", "cv_pdf_url": pdf_url}
+    for column, entries in affected.items():
+        supabase_admin.table("profiles").update({
+            column: entries
+        }).eq("user_id", current_user["user_id"]).execute()
+    
+    return {"status": "ok"}
+
+
+
+
+    result = supabase_admin.table("profiles").select("*").eq("user_id", current_user["user_id"]).single().execute()
+    profile = result.data
+    
+    section_map = {
+        "education": "education",
+        "experiences": "experiences",
+        "projects": "projects",
+    }
+    
+    section_model_map = {
+        "education": EducationEntry,
+        "experiences": ExperienceEntry,
+        "projects": ProjectsEntry,
+    }
+    
+    # group updates by section so we only write each column once
+    affected = {}
+    for update in body.updates:
+        column = section_map.get(update.section)
+        model = section_model_map.get(update.section)
+        if not column:
+            raise HTTPException(status_code=400, detail=f"Invalid section: {update.section}")
+        if column not in affected:
+            affected[column] = profile.get(column, [])
+        for entry in affected[column]:
+            if entry.get("id") == update.id:
+                try:
+                    entry.update(update.data)
+                    validated = model(**entry)
+                    break
+                except ValidationError as e:
+                    raise HTTPException(status_code=422, detail=str(e))
+
+    for column, entries in affected.items():
+        supabase_admin.table("profiles").update({
+            column: entries
+        }).eq("user_id", current_user["user_id"]).execute()
+    
+    return {"status": "ok"}
