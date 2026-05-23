@@ -76,16 +76,43 @@ class ExperienceEntry(BaseModel):
 class ProjectsEntry(BaseModel):
     id: str = None
     name: str
-    description: str
+    description: list[str]
     start_date: str
     end_date: str
     links: list[str]
     tech_stack: list[str]
 
 
+class UpdateEntryRequest(BaseModel):
+    section: str
+    id: str
+    data: dict
+
+class BulkUpdateRequest(BaseModel):
+    updates: list[UpdateEntryRequest]
 
 
+class NewEntryRequest(BaseModel):
+    section: str
+    data: dict
+    
+
+class BulkAddRequest(BaseModel):
+    adds: list[NewEntryRequest]
+    
+    
 ### helpers
+
+
+
+def stamp_ids(entries: list) -> list:
+    for entry in entries:
+        if not entry.get("id"):
+            entry["id"] = str(uuid.uuid4())
+    return entries
+
+
+
 def get_jwks():
     global _jwks_cache
     if _jwks_cache:
@@ -249,9 +276,9 @@ async def upload_cv(file: UploadFile = File(...), current_user = Depends(get_cur
         "cv_pdf_url" : pdf_url,
         "cv_parsed_text": cv_information,
         "cv_json": json_output,
-        "education": json_output.get("education", []),
-        "experiences": json_output.get("experience", []),
-        "projects": json_output.get("projects", []),
+        "education": stamp_ids(json_output.get("education", [])),
+        "experiences": stamp_ids(json_output.get("experience", [])),
+        "projects": stamp_ids(json_output.get("projects", [])),
         "skills": json_output.get("skills", {}).get("skills", ""),
     }).eq("user_id", current_user["user_id"]).execute()
 
@@ -261,14 +288,79 @@ async def upload_cv(file: UploadFile = File(...), current_user = Depends(get_cur
 @app.get("/cv/get")
 async def get_cv(current_user = Depends(get_current_user)):
     result = supabase_admin.table("profiles").select("*").eq("user_id", current_user["user_id"]).single().execute()
-    user_profile = result.data()
+    user_profile = result.data
     return {
         "education": [EducationEntry(**e) for e in user_profile.get("education", []) if e],
-        "experience": [ExperienceEntry(**e) for e in user_profile.get("experience", []) if e],
-        "projects": [ProjectsEntry(**e) for e in user_profile.get("prokects", []) if e],
+        "experience": [ExperienceEntry(**e) for e in user_profile.get("experiences", []) if e],
+        "projects": [ProjectsEntry(**e) for e in user_profile.get("projects", []) if e],
         "skills": user_profile.get("skills")
     }
     
-@app.put("/cv/update")
-async def update_cv(current_user = Depends(get_current_user)):
     
+@app.put("/cv/update")
+async def update_cv(body: UpdateEntryRequest, current_user = Depends(get_current_user)):
+    result = supabase_admin.table("profiles").select("*").eq("user_id", current_user["user_id"]).single().execute()
+    profile = result.data
+    
+    section_map = {
+        "education": "education",
+        "experiences": "experiences",
+        "projects": "projects",
+    }
+    
+    # group updates by section so we only write each column once
+    affected = {}
+    for update in body.updates:
+        column = section_map.get(update.section)
+        if not column:
+            raise HTTPException(status_code=400, detail=f"Invalid section: {update.section}")
+        if column not in affected:
+            affected[column] = profile.get(column, [])
+        for entry in affected[column]:
+            if entry.get("id") == update.id:
+                entry.update(update.data)
+                break
+
+    for column, entries in affected.items():
+        supabase_admin.table("profiles").update({
+            column: entries
+        }).eq("user_id", current_user["user_id"]).execute()
+    
+    return {"status": "ok"}
+
+
+#### careertwin parts
+
+@app.get("/careertwin/get_info")
+def get_careertwin_info(current_user = Depends(get_current_user)):
+    result = supabase_admin.table("profiles").select("*").eq("user_id", current_user["user_id"]).single().execute()
+    user_profile = result.data
+    return {
+        "education": [EducationEntry(**e) for e in user_profile.get("education", []) if e],
+        "experience": [ExperienceEntry(**e) for e in user_profile.get("experiences", []) if e],
+        "projects": [ProjectsEntry(**e) for e in user_profile.get("projects", []) if e],
+        "skills": user_profile.get("skills")
+    }
+    
+
+@app.post("/careertwin/add_info")
+def add_careertwin_info(body: BulkAddRequest, current_user = Depends(get_current_user)):
+    section_map = {
+        "education": "education",
+        "experiences": "experiences",
+        "projects": "projects",
+    }
+    
+    
+    
+    supabase_admin.table("profiles").update({
+        "cv_pdf_url" : pdf_url,
+        "cv_parsed_text": cv_information,
+        "cv_json": json_output,
+        "education": stamp_ids(json_output.get("education", [])),
+        "experiences": stamp_ids(json_output.get("experience", [])),
+        "projects": stamp_ids(json_output.get("projects", [])),
+        "skills": json_output.get("skills", {}).get("skills", ""),
+    }).eq("user_id", current_user["user_id"]).execute()
+
+    return {"status": "ok", "cv_pdf_url": pdf_url}
