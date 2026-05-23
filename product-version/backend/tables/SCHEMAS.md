@@ -79,7 +79,7 @@ Canonical job postings scraped from various sources. **Shared across all users**
 ```sql
 CREATE TABLE jobs (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    url             TEXT UNIQUE NOT NULL,
+    url             TEXT UNIQUE,
     title           TEXT NOT NULL,
     company         TEXT NOT NULL,
     location        TEXT,

@@ -1,3 +1,4 @@
+import tempfile
 from pydantic import ValidationError
 from fastapi import FastAPI, Depends, File, HTTPException, UploadFile, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -10,7 +11,7 @@ from jose import jwt, JWTError
 from pydantic import BaseModel
 from supabase import create_client, Client
 from docling.document_converter import DocumentConverter
-from functions.cv_and_cl_gen import cv_parser, job_parser
+from functions.cv_and_cl_gen import cv_parser, job_parser, cover_letter_generator
 import uuid
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "backend.env"), override=True)
@@ -477,60 +478,86 @@ def delete_careertwin_info(body: DeleteEntryRequest, current_user = Depends(get_
     return {"status": "ok"}
 
 
-### coverletter work
 
-# parse inputted job, docling and then llm and then map to json and then upload the json to user_jobs whilst generating a coverletter for the user, and returning ok
+
+### custom cv work, adds to cv_text in user_jobs
+@app.get("/custom_cv/get")
+def get_custom_cv(job_id = ..., current_user = Depends(get_current_user)):
+    pass
+
+@app.post("/custom_cv/generator")
+def cv_generator(job_id = ..., current_user = Depends(get_current_user)):
+    pass
+    #{
+    #   "selected_experiences": ["abc-123", "def-456"],
+    #   "selected_projects": ["xyz-789"],
+    #   "tailored_text": "..."
+    # }
+    ## and ALTER TABLE user_jobs ALTER COLUMN cv_text TYPE JSONB USING cv_text::jsonb;
+
+@app.edit("/custom_cv/edit")
+def cv_edit(job_id = ..., current_user = Depends(get_current_user)):
+    pass
+    # CV (later) → LaTeX template, user edits visually via a structured form not raw LaTeX, recompile on server with pdflatex
+
+
+
+### custom coverletter work, depends on cv_text
+###### SPLIT NEW_JOB_ADD INTO -> JOB_UPLOADER && COVERLETTER_GENERATOR(so its callable by scraper that naturally parses and uploads jobs, but first calls CV_GENERATOR)
+
+
 @app.post("/coverletter/new_job")
 async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_current_user)):
     file_bytes = await file.read()
     converter = DocumentConverter()
-    result = converter.convert(file_bytes) 
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        tmp.write(file_bytes)
+        tmp_path = tmp.name
+    result = converter.convert(tmp_path)
+    os.unlink(tmp_path)
     job_information = result.document.export_to_markdown()    
     json_output = job_parser(job_information)
 
-    ## add job
-    supabase_admin.table("jobs").update({
+
+    job_response = supabase_admin.table("jobs").insert({
         "title": json_output.get("title", ""),
         "company": json_output.get("company", ""),
         "location": json_output.get("location", ""),
         "description": json_output.get("description", ""),
-        "requirements": json_output.get("requirements", [])
-        "skills": json_outputs.get("skills", []),
+        "requirements": json_output.get("requirements", []),
+        "skills": json_output.get("skills", []),
         "salary": json_output.get("salary", ""),
         "duration": json_output.get("duration", ""),
         "fields": json_output.get("fields", [])
-    }).eq("user_id", current_user["user_id"]).execute()
+    }).execute()
+    
+    job_id = job_response.data[0]["id"]
 
-
-
-# first somehow fetch the job_id just uploaded and then cl gen and upload to db:    
-    job_id = supabase_admin..... eq job_id or smth
-    ## write cl gen from function call here while calling cv_text (pass as param on top of json_output)
+    ## LATER: instead of passing current_user, we'll filter for relevant experience/projects/etc to make cv_text and then pass that instead for more relevant coverletter gen as well as for new cv PDF generation
+    coverletter_text = cover_letter_generator(json_output, current_user)    
     path = f"{current_user["user_id"]}/coverletter_{job_id}.pdf"
     ## write pdf generation function call here (make pdf in some other file first)
     supabase_admin.storage.from_("coverletters").upload(path, file_bytes, {"upsert":"true"})
     pdf_url = supabase_admin.storage.from_("coverletters").get_public_url(path)
-    ## insert into db
-    supabase_admin.tables("user_jobs").update({
+    cv_text = current_user.get("cv_parsed_text", "")
+
+    supabase_admin.table("user_jobs").insert({ 
         "user_id": current_user["user_id"],
         "job_id": job_id,
-        "cv_text": ...,
-        "coverletter_text": coverletter_text,
-        "coverletter_url": pdf_url        
-    })
+        "cv_text": cv_text,
+        "cover_letter_text": coverletter_text,
+        "cover_letter_pdf_url": pdf_url     
+    }).execute()
     
-    ## Return cover letter text + pdf url + user_job_id
     return {"status": "ok", "coverletter_text": coverletter_text, "coverletter_url": pdf_url, "job_id": job_id}
-
-
 
 
 # fetch the required job by id and present the pdf for download as well as a text editable of it (perhaps latex code or smth else idk)
 @app.get("/coverletter/get")
 def get_coverletter():
-    
+    pass    
     
 # can accept two different types of input, either by "regenerate" or "data" where regenerate just regenerates with llm, or you edit the data in the text editable instead, and then reupload the pdf url with new
 @app.put("/coverletter/edit")
 def edit_coverletter():
-    
+    pass
