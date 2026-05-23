@@ -118,26 +118,26 @@ CREATE INDEX idx_jobs_skills            ON jobs USING GIN(skills);
 CREATE TABLE user_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    dashboard_config_id UUID NOT NULL REFERENCES dashboard_configs(id) ON DELETE CASCADE,
+    dashboard_config_id UUID REFERENCES dashboard_configs(id) ON DELETE SET NULL, -- nullable, not all jobs come from dashboard
     job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
     
     -- User-specific generated content
-    cv_text TEXT, -- Custom CV for this job
-    cover_letter_text TEXT, -- Custom cover letter for this job
+    cv_text TEXT,                  -- Custom CV for this job
+    cover_letter_text TEXT,        -- Custom cover letter for this job
+    cover_letter_pdf_url TEXT,     -- Stored PDF of the cover letter in supabase storage
     
     -- Scoring
-    cv_to_job_score INTEGER, -- How well CV matches job (0-100)
-    job_to_cv_score INTEGER, -- How well job matches user profile (0-100)
-    llm_score INTEGER, -- Overall LLM-computed relevance score (0-100)
+    cv_to_job_score INTEGER,       -- How well CV matches job (0-100)
+    job_to_cv_score INTEGER,       -- How well job matches user profile (0-100)
+    llm_score INTEGER,             -- Overall LLM-computed relevance score (0-100)
     
     -- Application tracking
-    status TEXT DEFAULT 'new', -- 'new', 'saved', 'applied', 'rejected', 'ignored', 'interview'
+    status TEXT DEFAULT 'new',     -- 'new', 'saved', 'applied', 'rejected', 'ignored', 'interview'
     applied_at TIMESTAMP WITH TIME ZONE,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
-    -- Prevent duplicate entries for same user + job
     CONSTRAINT unique_user_job UNIQUE (user_id, job_id)
 );
 

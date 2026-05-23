@@ -10,7 +10,7 @@ from jose import jwt, JWTError
 from pydantic import BaseModel
 from supabase import create_client, Client
 from docling.document_converter import DocumentConverter
-from functions.cv_and_cl_gen import cv_parser
+from functions.cv_and_cl_gen import cv_parser, job_parser
 import uuid
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "backend.env"), override=True)
@@ -329,13 +329,15 @@ async def update_cv(body: BulkUpdateRequest, current_user = Depends(get_current_
             affected[column] = profile.get(column, [])
         for entry in affected[column]:
             if entry.get("id") == update.id:
+                entry.update(update.data)
                 try:
-                    entry.update(update.data)
                     validated = model(**entry)
-                    break
                 except ValidationError as e:
                     raise HTTPException(status_code=422, detail=str(e))
-
+                entry.clear()
+                entry.update(validated.dict())
+                break
+            
     for column, entries in affected.items():
         supabase_admin.table("profiles").update({
             column: entries
@@ -402,8 +404,8 @@ def add_careertwin_info(body: BulkAddRequest, current_user = Depends(get_current
     return {"status": "ok"}
 
 
-
-
+@app.put("/careertwin/update_info")
+def update_careertwin_info(body: BulkUpdateRequest, current_user = Depends(get_current_user)):
     result = supabase_admin.table("profiles").select("*").eq("user_id", current_user["user_id"]).single().execute()
     profile = result.data
     
@@ -430,12 +432,14 @@ def add_careertwin_info(body: BulkAddRequest, current_user = Depends(get_current
             affected[column] = profile.get(column, [])
         for entry in affected[column]:
             if entry.get("id") == update.id:
+                entry.update(update.data)
                 try:
-                    entry.update(update.data)
                     validated = model(**entry)
-                    break
                 except ValidationError as e:
                     raise HTTPException(status_code=422, detail=str(e))
+                entry.clear()
+                entry.update(validated.dict())
+                break
 
     for column, entries in affected.items():
         supabase_admin.table("profiles").update({
@@ -443,3 +447,90 @@ def add_careertwin_info(body: BulkAddRequest, current_user = Depends(get_current
         }).eq("user_id", current_user["user_id"]).execute()
     
     return {"status": "ok"}
+
+
+@app.delete("/careertwin/delete")
+def delete_careertwin_info(body: DeleteEntryRequest, current_user = Depends(get_current_user)):
+    result = supabase_admin.table("profiles").select("*").eq("user_id", current_user["user_id"]).single().execute()
+    profile = result.data
+    
+    section_map = {
+        "education": "education",
+        "experiences": "experiences",
+        "projects": "projects",
+    }
+
+    column = section_map.get(body.section)
+    if not column:
+        raise HTTPException(status_code=400, detail="Invalid section")
+
+    entries = profile.get(column, [])
+    new_entries = [e for e in entries if e.get("id") != body.id]
+
+    if len(new_entries) == len(entries):
+        raise HTTPException(status_code=404, detail="Entry not found")
+
+    supabase_admin.table("profiles").update({
+        column: new_entries
+    }).eq("user_id", current_user["user_id"]).execute()
+
+    return {"status": "ok"}
+
+
+### coverletter work
+
+# parse inputted job, docling and then llm and then map to json and then upload the json to user_jobs whilst generating a coverletter for the user, and returning ok
+@app.post("/coverletter/new_job")
+async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_current_user)):
+    file_bytes = await file.read()
+    converter = DocumentConverter()
+    result = converter.convert(file_bytes) 
+    job_information = result.document.export_to_markdown()    
+    json_output = job_parser(job_information)
+
+    ## add job
+    supabase_admin.table("jobs").update({
+        "title": json_output.get("title", ""),
+        "company": json_output.get("company", ""),
+        "location": json_output.get("location", ""),
+        "description": json_output.get("description", ""),
+        "requirements": json_output.get("requirements", [])
+        "skills": json_outputs.get("skills", []),
+        "salary": json_output.get("salary", ""),
+        "duration": json_output.get("duration", ""),
+        "fields": json_output.get("fields", [])
+    }).eq("user_id", current_user["user_id"]).execute()
+
+
+
+# first somehow fetch the job_id just uploaded and then cl gen and upload to db:    
+    job_id = supabase_admin..... eq job_id or smth
+    ## write cl gen from function call here while calling cv_text (pass as param on top of json_output)
+    path = f"{current_user["user_id"]}/coverletter_{job_id}.pdf"
+    ## write pdf generation function call here (make pdf in some other file first)
+    supabase_admin.storage.from_("coverletters").upload(path, file_bytes, {"upsert":"true"})
+    pdf_url = supabase_admin.storage.from_("coverletters").get_public_url(path)
+    ## insert into db
+    supabase_admin.tables("user_jobs").update({
+        "user_id": current_user["user_id"],
+        "job_id": job_id,
+        "cv_text": ...,
+        "coverletter_text": coverletter_text,
+        "coverletter_url": pdf_url        
+    })
+    
+    ## Return cover letter text + pdf url + user_job_id
+    return {"status": "ok", "coverletter_text": coverletter_text, "coverletter_url": pdf_url, "job_id": job_id}
+
+
+
+
+# fetch the required job by id and present the pdf for download as well as a text editable of it (perhaps latex code or smth else idk)
+@app.get("/coverletter/get")
+def get_coverletter():
+    
+    
+# can accept two different types of input, either by "regenerate" or "data" where regenerate just regenerates with llm, or you edit the data in the text editable instead, and then reupload the pdf url with new
+@app.put("/coverletter/edit")
+def edit_coverletter():
+    
