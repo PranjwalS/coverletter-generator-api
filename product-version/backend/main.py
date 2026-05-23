@@ -8,6 +8,8 @@ import httpx
 from jose import jwt, JWTError
 from pydantic import BaseModel
 from supabase import create_client, Client
+from docling.document_converter import DocumentConverter
+from functions.cv_and_cl_gen import cv_parser
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "backend.env"), override=True)
 
@@ -191,4 +193,26 @@ async def upload_cv(file: UploadFile = File(...), current_user = Depends(get_cur
     file_bytes = await file.read()
     supabase_admin.storage.from_("cvs").upload(path, file_bytes, {"upsert":"true"})
     pdf_url = supabase_admin.storage.from_("cvs").get_public_url(path)
+    
+    converter = DocumentConverter()
+    result = converter.convert(pdf_url) 
+    cv_information = result.document.export_to_markdown()
+    
+    json_output = cv_parser(cv_information)
+
+    supabase_admin.table("profiles").update({
+        "cv_pdf_url" : pdf_url,
+        "cv_parsed_text": cv_information,
+        "cv_json": json_output,
+        "education": json_output.get("education", []),
+        "experiences": json_output.get("experience", []),
+        "projects": json_output.get("projects", []),
+        "skills": json_output.get("skills", {}).get("skills", ""),
+    }).eq("user_id", current_user["user_id"]).execute()
+
+    return {"status": "ok", "cv_pdf_url": pdf_url}
+
+
+@app.get("/cv/get")
+async def get_cv(current_user = Depends(get_current_user)):
     

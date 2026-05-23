@@ -86,10 +86,7 @@ Use this structure:
     }}
   ],
   "skills": {{
-    "languages": [],
-    "frameworks": [],
-    "tools": [],
-    "other": []
+    "skills": "",
   }},
   "projects": [
     {{
@@ -134,6 +131,5 @@ Now parse the CV carefully and return ONLY the JSON output.
 
     output = resp.choices[0].message.content
     parsed = json.loads(output)
-    print(json.dumps(parsed, indent=2))
-    
+    return parsed
     
