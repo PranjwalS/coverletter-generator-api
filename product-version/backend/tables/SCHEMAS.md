@@ -18,15 +18,19 @@ CREATE TABLE profiles (
     display_name TEXT NOT NULL,
     current_role TEXT,
     bio TEXT,
-    skills JSONB, -- Array of skill objects: [{"name": "React", "years": 2}, ...]
-    experiences JSONB, -- Array: [{"company": "...", "title": "...", "start_date": "...", "end_date": "...", "description": "..."}]
-    projects JSONB, -- Array: [{"name": "...", "description": "...", "repo_url": "...", "deployed_url": "...", "tags": [...]}]
-    education JSONB, -- Array: [{"institution": "...", "degree": "...", "field": "...", "start_date": "...", "end_date": "..."}]
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    phone TEXT,
+    email TEXT,
+    location TEXT,
+    links JSONB DEFAULT '[]',
+    skills JSONB,
+    experiences JSONB,
+    projects JSONB,
+    education JSONB,
     cv_pdf_url TEXT,
     cv_parsed_text TEXT,
     cv_json JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX idx_profiles_user_id ON profiles(user_id);

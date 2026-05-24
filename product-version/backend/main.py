@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from supabase import create_client, Client
 from docling.document_converter import DocumentConverter
 from functions.cv_and_cl_gen import cv_parser, job_parser, cover_letter_generator
+from functions.pdf_generator import generate_cover_letter_pdf
 import uuid
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "backend.env"), override=True)
@@ -106,10 +107,14 @@ class DeleteEntryRequest(BaseModel):
     section: str
     id: str
     
+class EditCoverLetterRequest(BaseModel):
+    user_job_id: str
+    mode: str  # "regenerate" or "data"
+    content: str | None = None 
+ 
+ 
+    
 ### helpers
-
-
-
 def stamp_ids(entries: list) -> list:
     for entry in entries:
         if not entry.get("id"):
@@ -277,14 +282,19 @@ async def upload_cv(file: UploadFile = File(...), current_user = Depends(get_cur
     
     json_output = cv_parser(cv_information)
 
+    contact = json_output.get("contact", {})
     supabase_admin.table("profiles").update({
-        "cv_pdf_url" : pdf_url,
+        "cv_pdf_url": pdf_url,
         "cv_parsed_text": cv_information,
         "cv_json": json_output,
         "education": stamp_ids(json_output.get("education", [])),
         "experiences": stamp_ids(json_output.get("experience", [])),
         "projects": stamp_ids(json_output.get("projects", [])),
         "skills": json_output.get("skills", {}).get("skills", ""),
+        "phone": contact.get("phone", ""),
+        "email": contact.get("email", ""),
+        "location": contact.get("location", ""),
+        "links": contact.get("links", []),
     }).eq("user_id", current_user["user_id"]).execute()
 
     return {"status": "ok", "cv_pdf_url": pdf_url}
@@ -532,32 +542,75 @@ async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_c
     }).execute()
     
     job_id = job_response.data[0]["id"]
+    job = supabase_admin.table("jobs").select("*").eq("id", user_job["job_id"]).single().execute().data
 
     ## LATER: instead of passing current_user, we'll filter for relevant experience/projects/etc to make cv_text and then pass that instead for more relevant coverletter gen as well as for new cv PDF generation
     coverletter_text = cover_letter_generator(json_output, current_user)    
     path = f"{current_user["user_id"]}/coverletter_{job_id}.pdf"
-    ## write pdf generation function call here (make pdf in some other file first)
-    supabase_admin.storage.from_("coverletters").upload(path, file_bytes, {"upsert":"true"})
+    pdf_bytes = generate_cover_letter_pdf(
+        cover_letter_text=coverletter_text,
+        candidate_name=current_user.get("display_name", ""),
+        candidate_email=current_user.get("email", ""),
+        candidate_phone=current_user.get("phone", ""),
+        candidate_location=current_user.get("location", ""),
+        candidate_links=current_user.get("links", []),
+    )
+    supabase_admin.storage.from_("coverletters").upload(path, pdf_bytes, {"upsert": "true"})
     pdf_url = supabase_admin.storage.from_("coverletters").get_public_url(path)
     cv_text = current_user.get("cv_parsed_text", "")
 
-    supabase_admin.table("user_jobs").insert({ 
+    user_job_response = supabase_admin.table("user_jobs").insert({ 
         "user_id": current_user["user_id"],
         "job_id": job_id,
         "cv_text": cv_text,
         "cover_letter_text": coverletter_text,
         "cover_letter_pdf_url": pdf_url     
     }).execute()
-    
-    return {"status": "ok", "coverletter_text": coverletter_text, "coverletter_url": pdf_url, "job_id": job_id}
+    user_job_id = user_job_response.data[0]["id"]
+    return {"status": "ok", "coverletter_text": coverletter_text, "coverletter_url": pdf_url, "job_id": job_id, "user_job_id": user_job_id}
 
 
 # fetch the required job by id and present the pdf for download as well as a text editable of it (perhaps latex code or smth else idk)
 @app.get("/coverletter/get")
-def get_coverletter():
+def get_coverletter(user_job_id: str, current_user=Depends(get_current_user)):
     pass    
     
 # can accept two different types of input, either by "regenerate" or "data" where regenerate just regenerates with llm, or you edit the data in the text editable instead, and then reupload the pdf url with new
 @app.put("/coverletter/edit")
-def edit_coverletter():
-    pass
+def edit_coverletter(data: EditCoverLetterRequest, current_user=Depends(get_current_user)):
+    if user_job["user_id"] != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    
+    user_job = supabase_admin.table("user_jobs").select("*").eq("id", data.user_job_id).single().execute().data
+    job = supabase_admin.table("jobs").select("*").eq("id", user_job["job_id"]).single().execute().data
+
+    if data.mode == "regenerate":
+        try:
+            coverletter_text = cover_letter_generator(job, current_user)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Cover letter generation failed: {str(e)}")
+    elif data.mode == "data":
+        if not data.content:
+            raise HTTPException(status_code=400, detail="Content required for data mode")
+        coverletter_text = data.content
+    else:
+        raise HTTPException(status_code=400, detail="Invalid mode, must be regenerate or data")
+    
+    path = f"{current_user["user_id"]}/coverletter_{user_job["job_id"]}.pdf"
+    pdf_bytes = generate_cover_letter_pdf(
+        cover_letter_text=coverletter_text,
+        candidate_name=current_user.get("display_name", ""),
+        candidate_email=current_user.get("email", ""),
+        candidate_phone=current_user.get("phone", ""),
+        candidate_location=current_user.get("location", ""),
+        candidate_links=current_user.get("links", []),
+    )
+    supabase_admin.storage.from_("coverletters").upload(path, pdf_bytes, {"upsert": "true"})
+    pdf_url = supabase_admin.storage.from_("coverletters").get_public_url(path)
+    
+    supabase_admin.table("user_jobs").update({
+        "cover_letter_text": coverletter_text,
+        "cover_letter_pdf_url": pdf_url
+    }).eq("id", data.user_job_id).execute()
+
+    return {"status": "ok", "user_job_id": data.user_job_id}
