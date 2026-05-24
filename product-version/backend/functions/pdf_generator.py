@@ -1,6 +1,7 @@
+import os
+os.add_dll_directory(r"C:\Program Files\GTK3-Runtime Win64\bin")
 from weasyprint import HTML, CSS
 from io import BytesIO
-import os
 import re
 
 

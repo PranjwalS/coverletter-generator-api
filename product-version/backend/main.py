@@ -1,4 +1,5 @@
 import tempfile
+import time
 from pydantic import ValidationError
 from fastapi import FastAPI, Depends, File, HTTPException, UploadFile, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -271,7 +272,7 @@ def get_me(current_user=Depends(get_current_user)):
     
 @app.post("/cv/upload")
 async def upload_cv(file: UploadFile = File(...), current_user = Depends(get_current_user)):
-    path = f"{current_user["user_id"]}/cv.pdf"
+    path = f"{current_user['user_id']}/cv.pdf"
     file_bytes = await file.read()
     supabase_admin.storage.from_("cvs").upload(path, file_bytes, {"upsert":"true"})
     pdf_url = supabase_admin.storage.from_("cvs").get_public_url(path)
@@ -545,7 +546,7 @@ async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_c
 
     ## LATER: instead of passing current_user, we'll filter for relevant experience/projects/etc to make cv_text and then pass that instead for more relevant coverletter gen as well as for new cv PDF generation
     coverletter_text = cover_letter_generator(json_output, current_user)    
-    path = f"{current_user["user_id"]}/coverletter_{job_id}.pdf"
+    path = f"{current_user['user_id']}/coverletter_{job_id}.pdf"
     pdf_bytes = generate_cover_letter_pdf(
         cover_letter_text=coverletter_text,
         candidate_name=current_user.get("display_name", ""),
@@ -554,8 +555,16 @@ async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_c
         candidate_location=current_user.get("location", ""),
         candidate_links=current_user.get("links", []),
     )
-    supabase_admin.storage.from_("coverletters").upload(path, pdf_bytes, {"upsert": "true"})
-    pdf_url = supabase_admin.storage.from_("coverletters").get_public_url(path)
+    bucket = supabase_admin.storage.from_("coverletters")
+    bucket.upload(path, pdf_bytes, file_options={
+        "content-type": "application/pdf",
+        "upsert": "true"
+    })
+    exists = supabase_admin.storage.from_("coverletters").list(current_user['user_id'])
+    print(exists)
+    time.sleep(1)
+    pdf_url = bucket.get_public_url(path)    
+    
     cv_text = current_user.get("cv_parsed_text", "")
 
     user_job_response = supabase_admin.table("user_jobs").insert({ 
@@ -615,7 +624,7 @@ def edit_coverletter(data: EditCoverLetterRequest, current_user=Depends(get_curr
     else:
         raise HTTPException(status_code=400, detail="Invalid mode, must be regenerate or data")
     
-    path = f"{current_user["user_id"]}/coverletter_{user_job["job_id"]}.pdf"
+    path = f"{current_user['user_id']}/coverletter_{user_job['job_id']}.pdf"
     pdf_bytes = generate_cover_letter_pdf(
         cover_letter_text=coverletter_text,
         candidate_name=current_user.get("display_name", ""),
@@ -624,8 +633,13 @@ def edit_coverletter(data: EditCoverLetterRequest, current_user=Depends(get_curr
         candidate_location=current_user.get("location", ""),
         candidate_links=current_user.get("links", []),
     )
-    supabase_admin.storage.from_("coverletters").upload(path, pdf_bytes, {"upsert": "true"})
-    pdf_url = supabase_admin.storage.from_("coverletters").get_public_url(path)
+    bucket = supabase_admin.storage.from_("coverletters")
+    bucket.upload(path, pdf_bytes, file_options={
+        "content-type": "application/pdf",
+        "upsert": "true"
+    })
+    time.sleep(1)
+    pdf_url = bucket.get_public_url(path)    
     
     supabase_admin.table("user_jobs").update({
         "cover_letter_text": coverletter_text,

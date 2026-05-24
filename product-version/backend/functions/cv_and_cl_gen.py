@@ -177,8 +177,8 @@ Now parse and return ONLY the JSON.
 """
     resp = groq_client.chat.completions.create(
         messages=[
-            {{"role": "system", "content": "You are a precise job posting parser that outputs strict valid JSON only."}},
-            {{"role": "user", "content": prompt}},
+            {"role": "system", "content": "You are a precise job posting parser that outputs strict valid JSON only."},
+            {"role": "user", "content": prompt},
         ],
         model="openai/gpt-oss-120b",
         temperature=0
