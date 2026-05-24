@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from supabase import create_client, Client
 from docling.document_converter import DocumentConverter
 from functions.cv_and_cl_gen import cv_parser, job_parser, cover_letter_generator
-from functions.pdf_generator import generate_cover_letter_pdf
+from functions.pdf_generator import generate_cover_letter_pdf, get_cover_letter_html
 import uuid
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "backend.env"), override=True)
@@ -505,7 +505,7 @@ def cv_generator(job_id = ..., current_user = Depends(get_current_user)):
     # }
     ## and ALTER TABLE user_jobs ALTER COLUMN cv_text TYPE JSONB USING cv_text::jsonb;
 
-@app.edit("/custom_cv/edit")
+@app.put("/custom_cv/edit")
 def cv_edit(job_id = ..., current_user = Depends(get_current_user)):
     pass
     # CV (later) → LaTeX template, user edits visually via a structured form not raw LaTeX, recompile on server with pdflatex
@@ -542,7 +542,6 @@ async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_c
     }).execute()
     
     job_id = job_response.data[0]["id"]
-    job = supabase_admin.table("jobs").select("*").eq("id", user_job["job_id"]).single().execute().data
 
     ## LATER: instead of passing current_user, we'll filter for relevant experience/projects/etc to make cv_text and then pass that instead for more relevant coverletter gen as well as for new cv PDF generation
     coverletter_text = cover_letter_generator(json_output, current_user)    
@@ -567,21 +566,41 @@ async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_c
         "cover_letter_pdf_url": pdf_url     
     }).execute()
     user_job_id = user_job_response.data[0]["id"]
-    return {"status": "ok", "coverletter_text": coverletter_text, "coverletter_url": pdf_url, "job_id": job_id, "user_job_id": user_job_id}
+    return {"status": "ok", "coverletter_url": pdf_url, "job_id": job_id, "user_job_id": user_job_id}
 
 
-# fetch the required job by id and present the pdf for download as well as a text editable of it (perhaps latex code or smth else idk)
+## basically;
+# Backend sends HTML → frontend renders it in contentEditable
+# User edits visually
+# Frontend grabs element.innerText → plain text with \n\n
+# Sends plain text to PUT /coverletter/edit as content
+# Backend stores plain text → calls build_cover_letter_html → WeasyPrint → PDF bytes → uploads → returns new pdf_url
+
 @app.get("/coverletter/get")
 def get_coverletter(user_job_id: str, current_user=Depends(get_current_user)):
-    pass    
     
-# can accept two different types of input, either by "regenerate" or "data" where regenerate just regenerates with llm, or you edit the data in the text editable instead, and then reupload the pdf url with new
+    user_job = supabase_admin.table("user_jobs").select("*").eq("id", user_job_id).single().execute().data
+    if user_job["user_id"] != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Forbidden")
+ 
+    html_data = get_cover_letter_html(
+        cover_letter_text=user_job["cover_letter_text"],
+        candidate_name=current_user.get("display_name", ""),
+        candidate_email=current_user.get("email", ""),
+        candidate_phone=current_user.get("phone", ""),
+        candidate_location=current_user.get("location", ""),
+        candidate_links=current_user.get("links", []),
+    )
+    return {"status": "ok", "html_data": html_data, "coverletter_url": user_job["cover_letter_pdf_url"], "user_job_id": user_job_id }
+    
 @app.put("/coverletter/edit")
 def edit_coverletter(data: EditCoverLetterRequest, current_user=Depends(get_current_user)):
+
+    user_job = supabase_admin.table("user_jobs").select("*").eq("id", data.user_job_id).single().execute().data
     if user_job["user_id"] != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Forbidden")
     
-    user_job = supabase_admin.table("user_jobs").select("*").eq("id", data.user_job_id).single().execute().data
+    
     job = supabase_admin.table("jobs").select("*").eq("id", user_job["job_id"]).single().execute().data
 
     if data.mode == "regenerate":
