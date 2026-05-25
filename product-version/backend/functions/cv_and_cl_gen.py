@@ -216,7 +216,10 @@ Read the job description carefully and identify:
 
 If fewer items are strongly relevant, still aim for:
 - minimum 2 experiences if available
-- minimum 2 projects if available
+- minimum 1 projects if available
+
+For each selected experience, explicitly map it to at least one responsibility or requirement from the job description.
+Do this mentally before writing and ensure paragraph 2 reflects this mapping clearly.
 
 ============================================================
 STEP 2 — WRITING RULES
@@ -248,7 +251,7 @@ LENGTH
 ============================================================
 
 - 3 paragraphs total
-- 380–520 words total (this is mandatory minimum seriousness level)
+- 350–450 words total (this is mandatory minimum seriousness level)
 
 ============================================================
 STRUCTURE
@@ -263,6 +266,8 @@ Paragraph 2:
 Cover selected EXPERIENCES (2–3).
 Explain what was actually done, how systems/processes were worked on, and what the contribution was.
 Focus on execution and technical clarity where relevant.
+Paragraph 2 must explicitly connect job responsibilities → matching experience evidence.
+Each experience described must answer: “which job requirement does this support?”
 
 Paragraph 3:
 Cover selected PROJECTS (2–3).
