@@ -13,8 +13,9 @@ from pydantic import BaseModel
 from supabase import create_client, Client
 from docling.document_converter import DocumentConverter
 from functions.cv_and_cl_gen import cv_parser, job_parser, cover_letter_generator
-from functions.pdf_generator import generate_cover_letter_pdf, get_cover_letter_html
+from functions.pdf_generator import generate_cover_letter_pdf, get_cover_letter_html, html_to_pdf
 import uuid
+from fastapi.staticfiles import StaticFiles
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "backend.env"), override=True)
 
@@ -41,8 +42,7 @@ app.add_middleware(
 
 bearer_scheme = HTTPBearer()
 _jwks_cache = None
-
-
+app.mount("/fonts", StaticFiles(directory="functions/fonts"), name="fonts")
 
 
 ### classses
@@ -547,7 +547,7 @@ async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_c
     ## LATER: instead of passing current_user, we'll filter for relevant experience/projects/etc to make cv_text and then pass that instead for more relevant coverletter gen as well as for new cv PDF generation
     coverletter_text = cover_letter_generator(json_output, current_user)    
     path = f"{current_user['user_id']}/coverletter_{job_id}.pdf"
-    pdf_bytes = generate_cover_letter_pdf(
+    html_data = get_cover_letter_html(
         cover_letter_text=coverletter_text,
         candidate_name=current_user.get("display_name", ""),
         candidate_email=current_user.get("email", ""),
@@ -555,13 +555,13 @@ async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_c
         candidate_location=current_user.get("location", ""),
         candidate_links=current_user.get("links", []),
     )
+    pdf_bytes = html_to_pdf(html_data)
+
     bucket = supabase_admin.storage.from_("coverletters")
     bucket.upload(path, pdf_bytes, file_options={
         "content-type": "application/pdf",
         "upsert": "true"
     })
-    exists = supabase_admin.storage.from_("coverletters").list(current_user['user_id'])
-    print(exists)
     time.sleep(1)
     pdf_url = bucket.get_public_url(path)    
     
@@ -572,6 +572,7 @@ async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_c
         "job_id": job_id,
         "cv_text": cv_text,
         "cover_letter_text": coverletter_text,
+        "cover_letter_html": html_data,
         "cover_letter_pdf_url": pdf_url     
     }).execute()
     user_job_id = user_job_response.data[0]["id"]
@@ -587,12 +588,11 @@ async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_c
 
 @app.get("/coverletter/get")
 def get_coverletter(user_job_id: str, current_user=Depends(get_current_user)):
-    
     user_job = supabase_admin.table("user_jobs").select("*").eq("id", user_job_id).single().execute().data
     if user_job["user_id"] != current_user["user_id"]:
         raise HTTPException(status_code=403, detail="Forbidden")
  
-    html_data = get_cover_letter_html(
+    html_data = user_job.get("cover_letter_html") or get_cover_letter_html(
         cover_letter_text=user_job["cover_letter_text"],
         candidate_name=current_user.get("display_name", ""),
         candidate_email=current_user.get("email", ""),
@@ -600,6 +600,7 @@ def get_coverletter(user_job_id: str, current_user=Depends(get_current_user)):
         candidate_location=current_user.get("location", ""),
         candidate_links=current_user.get("links", []),
     )
+ 
     return {"status": "ok", "html_data": html_data, "coverletter_url": user_job["cover_letter_pdf_url"], "user_job_id": user_job_id }
     
 @app.put("/coverletter/edit")
@@ -613,26 +614,34 @@ def edit_coverletter(data: EditCoverLetterRequest, current_user=Depends(get_curr
     job = supabase_admin.table("jobs").select("*").eq("id", user_job["job_id"]).single().execute().data
 
     if data.mode == "regenerate":
+        # Full regeneration from scratch
         try:
             coverletter_text = cover_letter_generator(job, current_user)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Cover letter generation failed: {str(e)}")
-    elif data.mode == "data":
+        html_data = get_cover_letter_html(
+            cover_letter_text=coverletter_text,
+            candidate_name=current_user.get("display_name", ""),
+            candidate_email=current_user.get("email", ""),
+            candidate_phone=current_user.get("phone", ""),
+            candidate_location=current_user.get("location", ""),
+            candidate_links=current_user.get("links", []),
+        )
+ 
+    elif data.mode == "html":
+        # Frontend sends full innerHTML — store as-is, render to PDF as-is
         if not data.content:
-            raise HTTPException(status_code=400, detail="Content required for data mode")
-        coverletter_text = data.content
+            raise HTTPException(status_code=400, detail="Content required for html mode")
+        html_data = data.content
+        coverletter_text = user_job.get("cover_letter_text", "")  # preserve original text
+ 
     else:
-        raise HTTPException(status_code=400, detail="Invalid mode, must be regenerate or data")
-    
+        raise HTTPException(status_code=400, detail="Invalid mode, must be regenerate or html")
+        
+    #     old_url = user_job["cover_letter_pdf_url"]
+    # upload new file with uuid instead → update DB → then delete old file
     path = f"{current_user['user_id']}/coverletter_{user_job['job_id']}.pdf"
-    pdf_bytes = generate_cover_letter_pdf(
-        cover_letter_text=coverletter_text,
-        candidate_name=current_user.get("display_name", ""),
-        candidate_email=current_user.get("email", ""),
-        candidate_phone=current_user.get("phone", ""),
-        candidate_location=current_user.get("location", ""),
-        candidate_links=current_user.get("links", []),
-    )
+    pdf_bytes = html_to_pdf(html_data)
     bucket = supabase_admin.storage.from_("coverletters")
     bucket.upload(path, pdf_bytes, file_options={
         "content-type": "application/pdf",
@@ -643,6 +652,7 @@ def edit_coverletter(data: EditCoverLetterRequest, current_user=Depends(get_curr
     
     supabase_admin.table("user_jobs").update({
         "cover_letter_text": coverletter_text,
+        "cover_letter_html": html_data,
         "cover_letter_pdf_url": pdf_url
     }).eq("id", data.user_job_id).execute()
 

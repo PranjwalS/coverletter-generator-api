@@ -192,36 +192,119 @@ Now parse and return ONLY the JSON.
   
 def cover_letter_generator(job: dict, user_profile: dict) -> str:
     prompt = f"""
-You are helping a real person write a cover letter for a job they genuinely want.
+You are writing a cover letter for a real applicant applying to a real job.
 
-Your goal is to write something that sounds like a confident, self-aware human wrote it — not a template, not a robot.
-Do NOT use filler phrases like "I am excited to apply", "I am passionate about", "I would be a great fit".
-Do NOT mention skills or experiences not present in the profile.
-Do NOT fabricate anything.
+This is a high-signal professional writing task. The goal is to clearly demonstrate capability through relevant experience and projects while remaining natural, grounded, and non-promotional in tone.
 
-Write in first person. Keep it to 3 paragraphs. Be direct and specific.
+============================================================
+STEP 1 — ROLE ANALYSIS (DO NOT OUTPUT)
+============================================================
 
-## WHO THEY ARE
+Read the job description carefully and identify:
+
+1. The PRIMARY nature of the role:
+   technical, operational, compliance, research, creative, business, or mixed.
+
+2. What the organization values most:
+   (e.g. reliability, accuracy, execution, collaboration, ownership, communication, technical depth, etc.)
+
+3. SELECT EXPERIENCE SET (STRICT BUT MAXIMAL):
+   - Choose 2 to 3 most relevant experiences from the profile.
+   - Choose 2 to 3 most relevant projects from the profile.
+   - Selection must prioritize relevance to the role, not diversity.
+   - Do NOT include anything outside this selected set.
+
+If fewer items are strongly relevant, still aim for:
+- minimum 2 experiences if available
+- minimum 2 projects if available
+
+============================================================
+STEP 2 — WRITING RULES
+============================================================
+
+- Do NOT fabricate or assume anything not explicitly present in the profile.
+- Do NOT introduce new tools, skills, or outcomes not present in the data.
+- Do NOT exaggerate impact, scale, or seniority.
+- Do NOT repeat the same idea across paragraphs.
+- Do NOT use marketing or hype language such as:
+  "excited to apply", "passionate about", "great fit", "leverage", "impactful", "dynamic"
+
+- Avoid buzzword stacking in single sentences (max 2 tools/technologies per sentence).
+- Keep writing technically grounded but human and readable.
+- Avoid robotic or overly polished corporate phrasing.
+
+============================================================
+TONE
+============================================================
+
+- First person.
+- Calm, confident, and matter-of-fact.
+- Not sales-like, not emotional, not exaggerated.
+- Sounds like someone describing real work clearly and directly.
+- Slight natural variation in phrasing is good, but do not over-style.
+
+============================================================
+LENGTH
+============================================================
+
+- 3 paragraphs total
+- 380–520 words total (this is mandatory minimum seriousness level)
+
+============================================================
+STRUCTURE
+============================================================
+
+Paragraph 1:
+Explain why this role and organization are meaningful as a next step.
+Ground this in the job’s actual responsibilities and purpose.
+Do NOT copy job description language. Interpret it naturally.
+
+Paragraph 2:
+Cover selected EXPERIENCES (2–3).
+Explain what was actually done, how systems/processes were worked on, and what the contribution was.
+Focus on execution and technical clarity where relevant.
+
+Paragraph 3:
+Cover selected PROJECTS (2–3).
+Highlight technical depth, problem-solving, and systems thinking.
+Keep it grounded and factual. No exaggeration.
+
+Paragraph 4:
+(Yes, include a final paragraph)
+Simple closing:
+- genuine interest in the work
+- willingness to contribute and learn
+- no hype, no begging, no overstatement
+
+============================================================
+PROFILE
+============================================================
+
 Name: {user_profile.get("display_name", "")}
 Skills: {user_profile.get("skills", "")}
 Experience: {json.dumps(user_profile.get("experiences", []))}
 Education: {json.dumps(user_profile.get("education", []))}
 Projects: {json.dumps(user_profile.get("projects", []))}
 
-## THE JOB
+============================================================
+JOB
+============================================================
+
 Title: {job.get("title", "")}
 Company: {job.get("company", "")}
-Location: {job.get("location", "")}
-What they want: {json.dumps(job.get("requirements", []))}
-Skills they need: {json.dumps(job.get("skills", []))}
 Description: {job.get("description", "")}
+Requirements: {json.dumps(job.get("requirements", []))}
+Skills needed: {json.dumps(job.get("skills", []))}
 
-## INSTRUCTIONS
-- Paragraph 1: Open with why this specific role at this specific company makes sense for where they are in their career. Be concrete, not generic.
-- Paragraph 2: Pull the most relevant 1-2 experiences or projects from their profile that directly speak to what the job needs. Be specific about what they did and the impact.
-- Paragraph 3: Short, confident close. Express genuine interest, invite next steps. No begging, no over-enthusiasm.
+============================================================
+OUTPUT RULE (ABSOLUTE)
+============================================================
 
-Return ONLY the cover letter text. No subject line. No "Dear Hiring Manager" header. No sign-off. Just the three paragraphs.
+Return ONLY the cover letter text.
+No title.
+No greeting.
+No sign-off.
+No commentary.
 """
     resp = groq_client.chat.completions.create(
         messages=[

@@ -128,6 +128,7 @@ CREATE TABLE user_jobs (
     -- User-specific generated content
     cv_text TEXT,                  -- Custom CV for this job
     cover_letter_text TEXT,        -- Custom cover letter for this job
+    cover_letter_html TEXT
     cover_letter_pdf_url TEXT,     -- Stored PDF of the cover letter in supabase storage
     
     -- Scoring
