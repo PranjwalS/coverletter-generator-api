@@ -19,3 +19,10 @@ as in;
 
     
 and also some endpoints that manage providing logs on new jobs, as well as sending emails/notifications regarding high scoring jobs and whatnot.
+
+
+
+Flow;
+
+Make it simple to an onboarding, split into about 5 sections and maintaining a sense of guide;
+    1. Ask for simple stuff on window 1 like dashboardname, importance, 
