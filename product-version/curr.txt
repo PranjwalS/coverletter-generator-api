@@ -1,9 +1,119 @@
-nope thats the plan, ill give you some better pseudo in a second, but the plan is basically, we'll write some backend code for a forms that need to be filled, where one of the important elements is taking a pdf from the user being the CV itself, and from there, the goal is to basically store a pdf version of it as well as a fully parsed version of the CV from the user and then store that in the db. After that, we need to allow the user to click on their CV and basically manually edit it like the parsed textual version of it just so they can make any edits if ever we made any mistakes, basically, this is the flow where a user can paste in their main CV, and we use it to basically store the pdf, parse and make a textual version of it and also provide a text editor so they can mod taht and moreover, we also json the whole setup, so it fills up the user's profile initially (I hope you remember the experience, education, projects and skills and whatnot columsn we had in our table) so it'll fill those up initially too
-But ofc this isnt the most important aspect just yet - this is jsut the foundation, from here we expand and we move into the actual product we'll work on here where for now we'll start by having users attach a pdf of the job (it makes sense for my current use case) and basically, the user can send this to backend, backend first parses it out, and from there, we use a pre written prompt (template) and we forward this tempalte to a groq api setup ive already made, and that basically also takes the user's parsed CV and the job desc as the context, and writes out a proper coverletter, and we send it back to the user as a single clean page, and have it prepped to download and submit...
-Once this is done, we'll build a in-website visual latex editor, where user can basically work around these hardcoded margin setups and whatnot, and these predesigned sections, and basically edit the entire file we provide them as a one would edit a docs (so not the user writing latex code) and then they can recompile, and we just recompile the whole setup and the user can then go from there (this part shouldn't be too hard fr a coverletter since it just simple two-three paragraphs, might be tricker for CV but that's later)
+now that the whole profile and coverletter and cv logic is all done and a minimal version of CareerTwin seems to be up
 
-these are small parts of the whole startup for now, but if they work perfectly, they will all be integrated inferringly in the whole flow. Right now I'm just starting with this whole cv to parse to coverletter gen with text editor to be able to use right off the bat. Moreover, we'll also write all the frontend code for this, i've already put in the bare basic landing pages and whatnot, so we'll jsut create a tab for i in the sidebar and then be like two pages where one is for CV manipulation (upload and parse edits) and then the improtant tab of the product being cv+job_desc => coverletter product.
+Firstly prepare to refine it, seems very empty and lean right now, so start designing how to fill those spots in the little empty places especially in CareerTwin and whatnot 
+Secondly, also decide any further side products to includes, to put into PRODUCTS in dashboard_layout basically, we already have the cv parser and coverletter generator, but further make a list of elements, and first make and test them in PRODUCTS and then integrate into the actual main jobscout flow as needed but still keep in PRODUCTS
 
-Does it make sense, this is the whole thing that we need to basically code up in literally like 1hr
-DONT MAKE ANY ASSUMPTIONS THAT THIS JOBSCOUT IS ONLY FOR SWE INTERNS OR ANYTHING, this is usable by anyone looking for a job, so don't make any silly fallbacks anyhwere for anything or hardcode anything, we need the entire setup to be insanely straightforward and reusable.
-Prep the whole list of everything I need for you and then we'll start working after u understand everything
+now mainly, we on backend;
+    1. User creation_dashboard pseudo and design the creation dashboard backend logic.
+    2. Expand the static jsons for skills and fields, and fetch proper dbs or apis for location and company lists
+    3. Fix up the entire scraper logic based on pseudo, review it and make it work appropriately for the dashboard logic
+    4. Expand sections of the Schema particularly the dashboard_configs table with new columns (refer to creation_dashboard initially)
+    5. Fix up the pseudo and then the code logic for personal_dashboard, so basically the full end to end filtering logic and endpoint based on config choices
+    
+    we on frontend;
+    1. Make the full flow UI for the creation_dashboard
+    2. Make page for edits to dashboard_configs for every dashboard
+    3. Determine all different tables to be provided in every dashboard (all, applied, incoming, queue-bot, etc) and then create the proper grids for the tables, clean and straightforward with all the info, and all columns dynamic
+            also ensure their is proper filtering, and searching logic setup, as well as quick bulk edits/deletion possibilities, and finally also analytics for every grids
+    
+    back on backend;
+    1. Plan out the full pseudo for the job_page and then write the full endpoint that will present all the info per job to frontend
+    2. Write both scoring logics being cv to job desc and job desc to cv 
+    3. Write scoring logic/prompts for llm based scoring too
+    4. Plan out the automated_elements and start writing code that launches them on all dashboard_configs efficiently
+
+    back on frontend;
+    1. Design job_page cleanly, nice and stacked, and the clear tools available on right side being the edit/regens for cl/cv and change status, auto_apply, etc
+
+    finally;
+    now that all major logic is setup;
+    1. Go write the backend logic for an auto form filling extension to save manual input times mainly with the ability to fetch the last two donwloads (coverletter, cv) and has access to user profile info and config info entirely and smartly fills all possible fields as much as possible
+    2. Write the frontend ui look for said extension - use react now instead of some html stuff - call it like Application Copilot
+    3. Refine the extension with AI custom answers to custom questions per job application forms, user can highlight and ask ai assistant to help answer questions -> basically add a chatbot to the extension
+
+    4. reduced uncertainty.
+            So build systems that answer:
+
+            “Should I apply?”
+            “Do I actually have a chance?”
+            “Why was I rejected?”
+            “What should I improve next?”
+            “Am I wasting time?”
+            “What jobs fit me best?”
+
+    ...
+    Elements left in mvp after the above;
+        1. Auto Apply bot with LLM screenshot + form filling logic, following a queue of jobs
+        2. Log important information
+        3. Smartly track user schedule and help schedule interviews
+                and then scaffold all information for given interview depending on job (cv, job_desc, coverletter, etc) and create a set of questions and provide smart answers for them in a little pdf directly emailed to user
+                as well as create mock interview abilities with an AI that basically asks these questions and similar questions and continues a conversation specifically for the given job and then evaluates user and gives suggestions
+        4. Refine CareerTwin far beyond with more customizations, and make it truly seem like a tool that fully mirrors the user's abilities in their field
+        5. Furthermore setup a RAG and AI assistant for CareerTwin (so its truly a twin now) where we start reading github repos and associated links to better guage at the profiles and chunk all relevant information for my user;
+                the information then fed to RAG and allows the AI assistant to work specifically for the given user, giving career suggestions, comparing 2+ jobs depending on user, suggesting certifications or project ideas, suggesting new skills/stacks to pick up, etc
+        6. Refine it all up Frontend wise and expand minimally with the products we had defined much earlier and provide them as standalones on the side (custom coverletter, cv, cold emails, etc)
+        7. Finalize the backend and dbs, making them efficient and setting up all the security elements throughout (Make a checklist and follow it thoroughly and then create tests that try them too)
+
+GOAL ALL IN ALL before being presented after all the above is:
+            System proactively assists user, it goes out to help user find an actual job, expands into logging, sending notifications to users, maintaining the auto-apply queues, naturally doing cold outreach, connects to a single place and even allows phone ui
+            and all in all the design itself is;
+                calm
+                actionable
+                prioritized
+                agent-assisted
+
+                        and
+
+                        1. Trust & Transparency Systems
+                        SUPER important.
+                        If your AI says:
+                        “You have a 72% match.”
+                        Users will ask:
+                        “why?”
+                        You need explainability.
+                        Always.
+
+
+                        2. Human Override Philosophy
+                        Never fully trap users in automation.
+                        Users need:
+                        visibility
+                        editability
+                        confidence
+                        intervention ability
+                        Especially for auto-apply systems.
+
+
+                        3. Memory Timelines
+                        This is HUGE for CareerTwin.
+                        A timeline of:
+                        applications
+                        skill evolution
+                        resume versions
+                        interview history
+                        learning milestones
+                        recruiter responses
+                        People LOVE progress visibility.
+
+
+                        4. Benchmarking
+                        Extremely sticky feature.
+                        Example:
+                        "Compared to other 2nd-year CS students in Montreal,
+                        your backend profile is top 12%."
+                        or:
+                        "Most successful applicants for this role had 3 more distributed systems projects."
+                        That’s insanely compelling.
+
+
+
+
+
+
+        AFTER THE ABOVE, IT IS YC-READY but continue with;
+        1. Create CareerBrain; basically feedback loops that looks at what jobs worked out for user, check what resumes/coverletters got the best responses and finetune itself further based on results, basically self improving
+        2. Backwards recruiters to candidates searcher; companies searching for probabilistically strong candidates
+        3. Simulation/Planning abilitie; 
+                Questions like: “Should I specialize or generalize?” “Should I do a masters?” “What if I switch to ML?” “What if I spend 6 months on systems programming?” “Am I underpaid long-term?” “Should I target startups or enterprise?” 
+                This becomes: career forecasting.
+... let's stop here and start working.

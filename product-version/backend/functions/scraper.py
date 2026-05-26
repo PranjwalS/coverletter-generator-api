@@ -119,7 +119,7 @@ def build_search_matrix(fields: set[str], locations: set[str], job_types: set[st
     
     
 #-------------------------------------------------------------#
-
+### HAVE TO REVIEW AND PERHAPS REWRITE EVERYTHING BELOW OF HERE
 #-------------------------------------------------------------#
 ### Layer 3: extract metadata from title + description
 def layer3_extract_metadata(
