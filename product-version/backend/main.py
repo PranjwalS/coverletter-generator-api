@@ -1,5 +1,6 @@
 import tempfile
 import time
+from typing import Optional
 from pydantic import ValidationError
 from fastapi import FastAPI, Depends, File, HTTPException, UploadFile, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -110,10 +111,24 @@ class DeleteEntryRequest(BaseModel):
     
 class EditCoverLetterRequest(BaseModel):
     user_job_id: str
-    mode: str  # "regenerate" or "data"
+    mode: str  # "regenerate" or "html"
     content: str | None = None 
  
  
+class ProfileUpdateRequest(BaseModel):
+    display_name: Optional[str] = None
+    current_role: Optional[str] = None
+    bio: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    location: Optional[str] = None
+    links: Optional[list[str]] = None
+
+
+class DashboardReference(BaseModel):
+    dashboard_config_id: str
+    
+    
     
 ### helpers
 def stamp_ids(entries: list) -> list:
@@ -260,6 +275,7 @@ def approve_login(user: UserLogin):
     }
 
 
+
 @app.get("/me")
 def get_me(current_user=Depends(get_current_user)):
     return {
@@ -269,7 +285,49 @@ def get_me(current_user=Depends(get_current_user)):
         "slug": current_user.get("slug"),
         "display_name": current_user.get("display_name"),
     }
-    
+
+@app.get("/profile/get")
+def get_profile(current_user=Depends(get_current_user)):
+    """Returns full profile fields for the profile edit page."""
+    return {
+        "display_name": current_user.get("display_name", ""),
+        "current_role": current_user.get("current_role", ""),
+        "bio": current_user.get("bio", ""),
+        "phone": current_user.get("phone", ""),
+        "email": current_user.get("email", ""),
+        "location": current_user.get("location", ""),
+        "links": current_user.get("links", []),
+    }
+
+@app.put("/profile/update")
+def update_profile(body: ProfileUpdateRequest, current_user=Depends(get_current_user)):
+    """Updates editable profile fields. Only updates fields that are provided (not None)."""
+    update_data = {}
+    if body.display_name is not None:
+        update_data["display_name"] = body.display_name
+    if body.current_role is not None:
+        update_data["current_role"] = body.current_role
+    if body.bio is not None:
+        update_data["bio"] = body.bio
+    if body.phone is not None:
+        update_data["phone"] = body.phone
+    if body.email is not None:
+        update_data["email"] = body.email
+    if body.location is not None:
+        update_data["location"] = body.location
+    if body.links is not None:
+        update_data["links"] = body.links
+
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    supabase_admin.table("profiles").update(update_data).eq("user_id", current_user["user_id"]).execute()
+    return {"status": "ok"}
+
+
+
+### ── CV endpoints ───────────────────────────────────────────────────────────
+
 @app.post("/cv/upload")
 async def upload_cv(file: UploadFile = File(...), current_user = Depends(get_current_user)):
     path = f"{current_user['user_id']}/cv.pdf"
@@ -491,6 +549,48 @@ def delete_careertwin_info(body: DeleteEntryRequest, current_user = Depends(get_
 
 
 
+### ── User Jobs / Master Dashboard endpoint ──────────────────────────────────
+
+
+## master endpoint
+@app.get("/user_jobs/all")
+def get_all_user_jobs(current_user=Depends(get_current_user)):
+    """
+    Returns all user_jobs for the current user, joined with job details.
+    Used by the master dashboard to show every job the user has interacted with.
+    """
+    user_jobs = supabase_admin.table("user_jobs") \
+        .select("*, jobs(*)") \
+        .eq("user_id", current_user["user_id"]) \
+        .order("created_at", desc=True) \
+        .execute()
+    return {"status": "ok", "user_jobs": user_jobs.data}
+
+
+@app.get("/user_jobs/config")
+def get_config_user_jobs(current_user = Depends(get_current_user), config = DashboardReference):
+    pass
+
+@app.patch("/user_jobs/status")
+def update_user_job_status(user_job_id: str, new_status: str, current_user=Depends(get_current_user)):
+    """Update application status for a single user_job."""
+    valid_statuses = ["new", "saved", "applied", "rejected", "ignored", "interview"]
+    if new_status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid_statuses}")
+
+    user_job = supabase_admin.table("user_jobs").select("user_id").eq("id", user_job_id).single().execute().data
+    if user_job["user_id"] != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    update_data = {"status": new_status}
+    if new_status == "applied":
+        update_data["applied_at"] = "now()"
+
+    supabase_admin.table("user_jobs").update(update_data).eq("id", user_job_id).execute()
+    return {"status": "ok"}
+
+
+
 ### custom cv work, adds to cv_text in user_jobs
 @app.get("/custom_cv/get")
 def get_custom_cv(job_id = ..., current_user = Depends(get_current_user)):
@@ -515,8 +615,6 @@ def cv_edit(job_id = ..., current_user = Depends(get_current_user)):
 
 ### custom coverletter work, depends on cv_text
 ###### SPLIT NEW_JOB_ADD INTO -> JOB_UPLOADER && COVERLETTER_GENERATOR(so its callable by scraper that naturally parses and uploads jobs, but first calls CV_GENERATOR)
-
-
 @app.post("/coverletter/new_job")
 async def new_job_add(file: UploadFile = File(...), current_user = Depends(get_current_user)):
     file_bytes = await file.read()
