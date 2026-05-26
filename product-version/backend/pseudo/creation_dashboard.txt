@@ -8,7 +8,6 @@ as in;
 
     As well as allowing the basic settings like;
         dashboard name
-        dashboard importance
         dashboard job_type
         ... etc (for later to figure out)
 
@@ -20,9 +19,20 @@ as in;
     
 and also some endpoints that manage providing logs on new jobs, as well as sending emails/notifications regarding high scoring jobs and whatnot.
 
-
+NOTE: on profiles page for CareerTwin, allow at the bottom the user to go through a long form that basically allows them to pick their skills and set them to skill level 1-5 and basically store that info on the ones that were included, with the ability to "add other SKILL" and after that query through the current skills complete set and see whether its already there just with a similar name (ask "did you mean xxxxx")
 
 Flow;
 
 Make it simple to an onboarding, split into about 5 sections and maintaining a sense of guide;
-    1. Ask for simple stuff on window 1 like dashboardname, importance, 
+    1. Ask for simple stuff on window 1 like dashboardname, dashboard description, job_type (full-time, part-time, co-op), ask whether user wants to fetch locations, skills, fields info from a list of their previous configs (and later templates)
+    2. Ask for fields that the user is looking for, cap out at 3 for now since quite broad, and allow picking excludable fields too along with it
+    3. Use fields information to pull the relevant set of skills options, allowing in a single forms users to either +, ., - for every job, so either INCLUDES, Neutral, EXCLUDES
+    4. Finally, allow INCLUDES and EXCLUDES for locations and companies in one place;  
+        for locations, 1. Allow user to input a specific location and determine a radius around it OR 2. Provide list of countries (with search), as a user picks, it horizontally expands to the Right, and just shows a list of cities (with search), and basically allow users to pick countries or cities as they like or dislike, hence with +, ., - logic again; BUT IMPORTANTLY, ask user whether they want to keep the other locations that are left as "." status, inside or outside the configs, so basically ask are "+" being preferences or hard INCLUDES
+        for companies, provide list of companies that are famous in a small grid, but basically, allow users to search through a set of companies and allow mainly +, ., - where you ask again whether the "+" are "+" being preferences or hard INCLUDES.
+    5. Preferences window; ask user regarding any other information like SALARY (weekly/monthly/hourly/yearly...), if Co-Op chosen then let them pick the duration of their work terms, allow to define minimal starting and maximal ending dates, allow picking Seasons to include. Allow users to define restrictions (figure this out later)
+
+    IMPORTANT; on all the pages; please provide short summary of their decision, like just textually represent what their choices mean so they can understand the logic on how their configs are used, and hence change if needed.
+    AND at the end of dashboard creation, on page 6, just provide a full summary of all their decision with direct links to bring them back for mods. And show a Launch Dashboard at the end.
+
+Make it similar to how onboarding works on big company pages when setting up a new account for smth, clean and informative, and be textual and helpful about every decision so the users know what they are doing at all time.
