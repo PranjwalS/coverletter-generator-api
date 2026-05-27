@@ -1,5 +1,6 @@
 now that the whole profile and coverletter and cv logic is all done and a minimal version of CareerTwin seems to be up
 
+0. make a new repo and new .env locally and reinstall all the relevant stuff but this new repo is basically the PRODUCT VERSION and call it jobscout+CareerTwin on github as well as setting up straightforward deployment elements right away like render/vercel for FE and app-services/gcp/etc for BE
 Firstly prepare to refine it, seems very empty and lean right now, so start designing how to fill those spots in the little empty places especially in CareerTwin and whatnot 
 Secondly, also decide any further side products to includes, to put into PRODUCTS in dashboard_layout basically, we already have the cv parser and coverletter generator, but further make a list of elements, and first make and test them in PRODUCTS and then integrate into the actual main jobscout flow as needed but still keep in PRODUCTS
 
@@ -27,9 +28,10 @@ now mainly, we on backend;
 
     finally;
     now that all major logic is setup;
-    1. Go write the backend logic for an auto form filling extension to save manual input times mainly with the ability to fetch the last two donwloads (coverletter, cv) and has access to user profile info and config info entirely and smartly fills all possible fields as much as possible
-    2. Write the frontend ui look for said extension - use react now instead of some html stuff - call it like Application Copilot
-    3. Refine the extension with AI custom answers to custom questions per job application forms, user can highlight and ask ai assistant to help answer questions -> basically add a chatbot to the extension
+    1. Go write all the backend logic for CV generation, custom from careertwin per job, and then frontend for mods
+    2. Go write the backend logic for an auto form filling extension to save manual input times mainly with the ability to fetch the last two donwloads (coverletter, cv) and has access to user profile info and config info entirely and smartly fills all possible fields as much as possible
+    3. Write the frontend ui look for said extension - use react now instead of some html stuff - call it like Application Copilot
+    4. Refine the extension with AI custom answers to custom questions per job application forms, user can highlight and ask ai assistant to help answer questions -> basically add a chatbot to the extension
 
     4. reduced uncertainty.
             So build systems that answer:
