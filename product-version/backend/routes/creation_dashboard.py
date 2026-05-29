@@ -3,8 +3,15 @@ import json
 from pydantic import BaseModel
 from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, FastAPI, HTTPException, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from uuid import UUID
+from typing import Optional
+from pydantic import BaseModel
+from dependencies import supabase_admin, get_current_user
+
+router = FastAPI()
+
 
 
 class SalaryConfig(BaseModel):
@@ -56,39 +63,51 @@ class DashboardConfigPatch(BaseModel):
     date_range: Optional[DateRange] = None
     active: Optional[bool] = None  # True on launch
 
-## input from frontend?
-# {
-#   "name": "Fall 2026 SWE",
-#   "description": "...",
-#   "job_types": ["co-op"],
-#   "include_fields": ["software engineer"],  ## use fields INCLudes to fetch skills
-#   "exclude_fields": ["manager"],   
-#   "include_skills": ["python", "react"],
-#   "exclude_skills": ["cobol"],
-#   "include_locations": [...],
-#   "exclude_locations": [...],
-#   "location_mode": "preference",
-#   "include_companies": [...],
-#   "exclude_companies": [...],
-#   "company_mode": "hard",
-#   "salary": { "type": "hourly", "min": 20 },
-#   "seasons": ["fall_2026"],
-#   "work_term_duration": "4_months",
-#   "date_range": { "start": "2026-09-01", "end": "2026-12-31" }
-# }
 
 
 
 
+router = APIRouter()
+# --- META ---
+@router.get("/meta/skills")
+async def get_skills():
+    with open("data/skills.json", "r") as f:
+        return json.load(f)
+       
+@router.get("/meta/fields")
+async def get_fields():
+    with open("data/new_fields.json", "r") as f:
+        return json.load(f)
+    
+@router.get("/meta/locations")
+async def get_locations():
+    with open("data/locations.json", "r") as f:
+        return json.load(f)
 
-## endpoints idea
-# GET  /meta/skills
-# GET  /meta/fields
-# GET  /meta/locations
-# GET  /meta/companies
 
-# GET  /dashboard-configs/{id}          ← resume draft OR edit existing
-# GET  /dashboard-configs/{id}/export   ← copy-from previous
 
-# POST   /dashboard-configs             ← create draft (step 1 submit)
-# PATCH  /dashboard-configs/{id}        ← update per step
+
+@router.get("/meta/companies")
+async def get_companies(search: str = ""):
+    cached = redis_client.get("companies_list")
+    companies = json.loads(cached)
+    
+    if not search or len(search) < 2:
+        return []
+    
+    filtered = [c for c in companies if search.lower() in c["name"].lower()]
+    return filtered[:20]
+
+# --- DASHBOARD CONFIGS ---
+@router.get("/dashboard-configs/{config_id}")
+async def get_dashboard_config(config_id: UUID):
+    pass
+@router.get("/dashboard-configs/{config_id}/export")
+async def export_dashboard_config(config_id: UUID):
+    pass
+@router.post("/dashboard-configs")
+async def create_dashboard_config(payload: DashboardConfigCreate):
+    pass
+@router.patch("/dashboard-configs/{config_id}")
+async def update_dashboard_config(config_id: UUID, payload: DashboardConfigPatch):
+    pass

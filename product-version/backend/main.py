@@ -1,3 +1,4 @@
+import json
 import tempfile
 import time
 from typing import Optional
@@ -11,28 +12,17 @@ import os
 import httpx
 from jose import jwt, JWTError
 from pydantic import BaseModel
-from supabase import create_client, Client
 from docling.document_converter import DocumentConverter
 from functions.cv_and_cl_gen import cv_parser, job_parser, cover_letter_generator
 from functions.pdf_generator import generate_cover_letter_pdf, get_cover_letter_html, html_to_pdf
 import uuid
 from fastapi.staticfiles import StaticFiles
-
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "backend.env"), override=True)
-
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "*")
-SUPABASE_URL = os.getenv("SUPABASE_PROD_URL")
-SUPABASE_PUBLISHABLE_KEY = os.getenv("SUPABASE_PUBLISHABLE_KEY")
-SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
-
-# Public client for auth operations (sign in, sign up)
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY)
-
-# Admin client using secret key for admin operations
-supabase_admin: Client = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+from routes.creation_dashboard import router as dashboard_router
+from dependencies import supabase_admin, supabase, get_current_user, FRONTEND_ORIGIN
+import csv
 
 app = FastAPI()
-
+app.include_router(dashboard_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_ORIGIN, "http://localhost:5173"],
@@ -41,11 +31,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-bearer_scheme = HTTPBearer()
-_jwks_cache = None
 app.mount("/fonts", StaticFiles(directory="functions/fonts"), name="fonts")
 
 
+
+
+@app.on_event("startup")
+async def load_companies_cache():
+    companies = []
+    with open("data/companies.csv", "r") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            companies.append({
+                "name": row["Company"],
+                "country": row["Country"],
+                "continent": row["Continent"],
+            })
+    redis_client.setex("companies_list", 86400, json.dumps(companies))
+    
+    
 ### classses
 
 class UserCreate(BaseModel):
@@ -136,59 +140,6 @@ def stamp_ids(entries: list) -> list:
         if not entry.get("id"):
             entry["id"] = str(uuid.uuid4())
     return entries
-
-
-
-def get_jwks():
-    global _jwks_cache
-    if _jwks_cache:
-        return _jwks_cache
-    response = httpx.get(f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json")
-    response.raise_for_status()
-    _jwks_cache = response.json()
-    return _jwks_cache
-
-def verify_supabase_jwt(token: str):
-    try:
-        jwks = get_jwks()
-        # Get the kid from token header
-        unverified_header = jwt.get_unverified_header(token)
-        kid = unverified_header.get("kid")
-        # Find matching key
-        key = None
-        for k in jwks.get("keys", []):
-            if k.get("kid") == kid:
-                key = k
-                break
-        if not key:
-            return None
-        payload = jwt.decode(token, key, algorithms=["ES256", "RS256"], options={"verify_aud": False})
-        return payload
-    except JWTError:
-        return None
-
-
-
-
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)):
-    token = credentials.credentials
-    payload = verify_supabase_jwt(token)
-    if not payload:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    try:
-        profile = supabase_admin.table("profiles").select("*").eq("user_id", user_id).single().execute()
-        if not profile.data:
-            raise HTTPException(status_code=404, detail="Profile not found")
-        return {"user_id": user_id, **profile.data}
-    except HTTPException:
-        raise
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user")
-
-
 
 
 
