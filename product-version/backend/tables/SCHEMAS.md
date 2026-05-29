@@ -45,28 +45,42 @@ Per-user dashboard configurations. Each user can have multiple dashboards (e.g.,
 CREATE TABLE dashboard_configs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,                                    -- "Fall 2026 Software Jobs"
+    name TEXT NOT NULL,
+    description TEXT,
 
-    -- Include filters (used at scrape time + per-user filtering)
-    include_skills JSONB NOT NULL DEFAULT '[]',            -- ["react", "python"]
-    include_fields JSONB NOT NULL DEFAULT '[]',            -- ["software engineer", "ml engineer"]
-    include_locations JSONB NOT NULL DEFAULT '[]',         -- ["toronto", "remote"]
+    -- Include filters
+    include_skills JSONB NOT NULL DEFAULT '[]',
+    include_fields JSONB NOT NULL DEFAULT '[]',
+    include_locations JSONB NOT NULL DEFAULT '[]',
+    include_companies JSONB NOT NULL DEFAULT '[]',
 
-    -- Exclude filters (per-user only, never at scrape time)
-    exclude_skills JSONB NOT NULL DEFAULT '[]',            -- ["cobol", "salesforce"]
-    exclude_fields JSONB NOT NULL DEFAULT '[]',            -- ["manager", "director"]
-    exclude_locations JSONB NOT NULL DEFAULT '[]',         -- ["usa"]
+    -- Exclude filters
+    exclude_skills JSONB NOT NULL DEFAULT '[]',
+    exclude_fields JSONB NOT NULL DEFAULT '[]',
+    exclude_locations JSONB NOT NULL DEFAULT '[]',
+    exclude_companies JSONB NOT NULL DEFAULT '[]',
 
-    -- Job type (maps to LinkedIn f_JT at scrape time)
-    job_types JSONB NOT NULL DEFAULT '["internship", "co-op"]', -- ["internship", "full-time"]
+    -- Modes (preference = boost score, hard = strict filter)
+    location_mode TEXT CHECK (location_mode IN ('preference', 'hard')) DEFAULT 'preference',
+    company_mode TEXT CHECK (company_mode IN ('preference', 'hard')) DEFAULT 'preference',
 
-    -- Seasons
-    seasons JSONB DEFAULT '["fall_2026"]',                 -- ["fall_2026", "winter_2027"]
+    -- Job type
+    job_types JSONB NOT NULL DEFAULT '["internship", "co-op"]',
+
+    -- Seasons + work term
+    seasons JSONB DEFAULT '["fall_2026"]',
+    work_term_duration TEXT,
+
+    -- Date range
+    date_range JSONB,  -- { "start": "2026-09-01", "end": "2026-12-31" }
+
+    -- Salary
+    salary JSONB,      -- { "type": "hourly", "min": 20, "max": 40 }
 
     -- Scoring
     min_score_threshold INTEGER DEFAULT 30,
 
-    active BOOLEAN DEFAULT true,
+    active BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
