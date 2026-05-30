@@ -118,4 +118,5 @@ GOAL ALL IN ALL before being presented after all the above is:
         3. Simulation/Planning abilitie; 
                 Questions like: “Should I specialize or generalize?” “Should I do a masters?” “What if I switch to ML?” “What if I spend 6 months on systems programming?” “Am I underpaid long-term?” “Should I target startups or enterprise?” 
                 This becomes: career forecasting.
+        4. CareerTwin Tap-to-Share — at networking events, two users tap phones to instantly exchange full CareerTwin profiles (contact info, links, photo, socials) without any manual input.
 ... let's stop here and start working.
