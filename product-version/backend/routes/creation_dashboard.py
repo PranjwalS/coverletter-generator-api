@@ -85,8 +85,6 @@ async def get_locations():
         return json.load(f)
 
 
-
-
 @router.get("/meta/companies")
 async def get_companies(search: str = ""):
     cached = redis_client.get("companies_list")
@@ -98,13 +96,17 @@ async def get_companies(search: str = ""):
     filtered = [c for c in companies if search.lower() in c["name"].lower()]
     return filtered[:20]
 
+
+
 # --- DASHBOARD CONFIGS ---
 @router.get("/dashboard-configs/{config_id}")
 async def get_dashboard_config(config_id: UUID):
-    pass
+    profile = supabase_admin.table("dashboard_configs").select("*").eq("config_id", get_current_user()).single().execute()
 @router.get("/dashboard-configs/{config_id}/export")
 async def export_dashboard_config(config_id: UUID):
     pass
+
+
 @router.post("/dashboard-configs")
 async def create_dashboard_config(payload: DashboardConfigCreate):
     pass
