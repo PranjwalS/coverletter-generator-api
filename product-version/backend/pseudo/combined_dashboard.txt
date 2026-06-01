@@ -65,4 +65,4 @@ pseudo code config specific filtering per dashboard config, works as function fo
     CRON daily                     → auto-runs the new job fetch + scoring for all active users
 
 
-    i believe, if a user was to edit their dashboard configs immensely, then flush all history in /existing
+i believe, if a user was to edit their dashboard configs immensely, then flush all history in /existing         

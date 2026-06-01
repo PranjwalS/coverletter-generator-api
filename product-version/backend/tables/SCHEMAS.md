@@ -44,7 +44,7 @@ Per-user dashboard configurations. Each user can have multiple dashboards (e.g.,
 ```sql
 CREATE TABLE dashboard_configs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     description TEXT,
 

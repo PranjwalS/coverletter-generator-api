@@ -10,7 +10,6 @@ from dependencies import supabase_admin, get_current_user, redis_client
 router = APIRouter()
 
 
-# ─── Models ───────────────────────────────────────────────────────────────────
 
 class SalaryConfig(BaseModel):
     type: str  # "hourly", "weekly", "monthly", "yearly"
@@ -63,7 +62,6 @@ class DashboardConfigPatch(BaseModel):
     active: Optional[bool] = None   # flip True on Launch
 
 
-# ─── Meta ─────────────────────────────────────────────────────────────────────
 
 @router.get("/meta/skills")
 async def get_skills():
@@ -95,10 +93,7 @@ async def get_companies(search: str = ""):
 
 @router.get("/meta/skills-by-fields")
 async def get_skills_by_fields(fields: str = ""):
-    """
-    Given a comma-separated list of field names, return the relevant skills subset.
-    Falls back to all skills if fields is empty or unrecognised.
-    """
+    
     with open("data/skills.json", "r") as f:
         all_skills = json.load(f)
 
@@ -120,16 +115,17 @@ async def get_skills_by_fields(fields: str = ""):
     return all_skills
 
 
-# ─── Dashboard Configs ────────────────────────────────────────────────────────
+
+
+
 
 @router.get("/dashboard-configs")
-async def list_dashboard_configs(user_id: str = Depends(get_current_user)):
-    """Return all configs for the current user."""
+async def list_dashboard_configs(current_user: str = Depends(get_current_user)):
     res = (
         supabase_admin
         .table("dashboard_configs")
         .select("*")
-        .eq("user_id", user_id)
+        .eq("user_id", current_user["user_id"])
         .order("created_at", desc=True)
         .execute()
     )
@@ -137,13 +133,13 @@ async def list_dashboard_configs(user_id: str = Depends(get_current_user)):
 
 
 @router.get("/dashboard-configs/{config_id}")
-async def get_dashboard_config(config_id: UUID, user_id: str = Depends(get_current_user)):
+async def get_dashboard_config(config_id: UUID, current_user: str = Depends(get_current_user)):
     res = (
         supabase_admin
         .table("dashboard_configs")
         .select("*")
         .eq("id", str(config_id))
-        .eq("user_id", user_id)   # ownership check
+        .eq("user_id", current_user["user_id"])  
         .single()
         .execute()
     )
@@ -153,14 +149,13 @@ async def get_dashboard_config(config_id: UUID, user_id: str = Depends(get_curre
 
 
 @router.get("/dashboard-configs/{config_id}/export")
-async def export_dashboard_config(config_id: UUID, user_id: str = Depends(get_current_user)):
-    """Return config as a clean JSON export (no internal fields)."""
+async def export_dashboard_config(config_id: UUID, current_user: str = Depends(get_current_user)):
     res = (
         supabase_admin
         .table("dashboard_configs")
         .select("*")
         .eq("id", str(config_id))
-        .eq("user_id", user_id)
+        .eq("user_id", current_user["user_id"])
         .single()
         .execute()
     )
@@ -175,10 +170,10 @@ async def export_dashboard_config(config_id: UUID, user_id: str = Depends(get_cu
 @router.post("/dashboard-configs")
 async def create_dashboard_config(
     payload: DashboardConfigCreate,
-    user_id: str = Depends(get_current_user),
+    current_user: str = Depends(get_current_user),
 ):
     row = {
-        "user_id": user_id,
+        "user_id": current_user["user_id"],
         "active": False,
         **payload.model_dump(exclude_none=True),
     }
@@ -201,7 +196,7 @@ async def create_dashboard_config(
 async def update_dashboard_config(
     config_id: UUID,
     payload: DashboardConfigPatch,
-    user_id: str = Depends(get_current_user),
+    current_user: str = Depends(get_current_user),
 ):
     # Ownership check first
     existing = (
@@ -209,7 +204,7 @@ async def update_dashboard_config(
         .table("dashboard_configs")
         .select("id")
         .eq("id", str(config_id))
-        .eq("user_id", user_id)
+        .eq("user_id", current_user["user_id"])
         .single()
         .execute()
     )
@@ -218,7 +213,6 @@ async def update_dashboard_config(
 
     updates = payload.model_dump(exclude_none=True)
 
-    # Serialize nested models
     if payload.salary:
         updates["salary"] = payload.salary.model_dump()
     if payload.date_range:
@@ -240,13 +234,13 @@ async def update_dashboard_config(
 
 
 @router.delete("/dashboard-configs/{config_id}")
-async def delete_dashboard_config(config_id: UUID, user_id: str = Depends(get_current_user)):
+async def delete_dashboard_config(config_id: UUID, current_user: str = Depends(get_current_user)):
     existing = (
         supabase_admin
         .table("dashboard_configs")
         .select("id")
         .eq("id", str(config_id))
-        .eq("user_id", user_id)
+        .eq("user_id", current_user["user_id"])
         .single()
         .execute()
     )
@@ -258,14 +252,14 @@ async def delete_dashboard_config(config_id: UUID, user_id: str = Depends(get_cu
 
 
 @router.post("/dashboard-configs/{config_id}/launch")
-async def launch_dashboard_config(config_id: UUID, user_id: str = Depends(get_current_user)):
+async def launch_dashboard_config(config_id: UUID, current_user: str = Depends(get_current_user)):
     """Activate a config — sets active=True, deactivates all others for this user."""
     existing = (
         supabase_admin
         .table("dashboard_configs")
         .select("id")
         .eq("id", str(config_id))
-        .eq("user_id", user_id)
+        .eq("user_id", current_user["user_id"])
         .single()
         .execute()
     )
@@ -273,7 +267,7 @@ async def launch_dashboard_config(config_id: UUID, user_id: str = Depends(get_cu
         raise HTTPException(status_code=404, detail="Config not found")
 
     # Deactivate all other configs for this user
-    supabase_admin.table("dashboard_configs").update({"active": False}).eq("user_id", user_id).execute()
+    # supabase_admin.table("dashboard_configs").update({"active": False}).eq("user_id", user_id).execute()
 
     # Activate this one
     res = (
@@ -286,7 +280,12 @@ async def launch_dashboard_config(config_id: UUID, user_id: str = Depends(get_cu
     return res.data[0]
 
 
+
+
 # ─── Jobs Feed ────────────────────────────────────────────────────────────────
+
+### MODIFY THE TWO BELOW...
+
 
 @router.get("/dashboard-configs/{config_id}/jobs")
 async def get_jobs_for_config(
