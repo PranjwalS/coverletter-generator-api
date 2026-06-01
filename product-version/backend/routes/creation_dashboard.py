@@ -3,21 +3,6 @@ import json
 from pydantic import BaseModel
 from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, FastAPI, HTTPException, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from uuid import UUID
-from typing import Optional
-from pydantic import BaseModel
-from dependencies import supabase_admin, get_current_user
-
-router = FastAPI()
-
-
-import os
-import json
-from pydantic import BaseModel
-from typing import Optional
-from uuid import UUID
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dependencies import supabase_admin, get_current_user, redis_client
