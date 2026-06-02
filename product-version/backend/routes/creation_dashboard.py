@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import json
 from pydantic import BaseModel
@@ -120,7 +121,7 @@ async def get_skills_by_fields(fields: str = ""):
 
 
 @router.get("/dashboard-configs")
-async def list_dashboard_configs(current_user: str = Depends(get_current_user)):
+async def list_dashboard_configs(current_user: dict = Depends(get_current_user)):
     res = (
         supabase_admin
         .table("dashboard_configs")
@@ -133,7 +134,7 @@ async def list_dashboard_configs(current_user: str = Depends(get_current_user)):
 
 
 @router.get("/dashboard-configs/{config_id}")
-async def get_dashboard_config(config_id: UUID, current_user: str = Depends(get_current_user)):
+async def get_dashboard_config(config_id: UUID, current_user: dict = Depends(get_current_user)):
     res = (
         supabase_admin
         .table("dashboard_configs")
@@ -149,7 +150,7 @@ async def get_dashboard_config(config_id: UUID, current_user: str = Depends(get_
 
 
 @router.get("/dashboard-configs/{config_id}/export")
-async def export_dashboard_config(config_id: UUID, current_user: str = Depends(get_current_user)):
+async def export_dashboard_config(config_id: UUID, current_user: dict = Depends(get_current_user)):
     res = (
         supabase_admin
         .table("dashboard_configs")
@@ -170,12 +171,12 @@ async def export_dashboard_config(config_id: UUID, current_user: str = Depends(g
 @router.post("/dashboard-configs")
 async def create_dashboard_config(
     payload: DashboardConfigCreate,
-    current_user: str = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     row = {
         "user_id": current_user["user_id"],
         "active": False,
-        **payload.model_dump(exclude_none=True),
+        **payload.model_dump(exclude_none=True, exclude={"location", "salary", "date_range"}),
     }
 
     # Serialize nested models to plain dicts for Supabase
@@ -184,7 +185,9 @@ async def create_dashboard_config(
     if payload.date_range:
         row["date_range"] = payload.date_range.model_dump()
     if payload.location:
-        row["location"] = payload.location.model_dump()
+        row["location_mode"] = payload.location.mode
+        row["include_locations"] = payload.location.includes
+        row["exclude_locations"] = payload.location.excludes
 
     res = supabase_admin.table("dashboard_configs").insert(row).execute()
     if not res.data:
@@ -196,7 +199,7 @@ async def create_dashboard_config(
 async def update_dashboard_config(
     config_id: UUID,
     payload: DashboardConfigPatch,
-    current_user: str = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     # Ownership check first
     existing = (
@@ -211,15 +214,17 @@ async def update_dashboard_config(
     if not existing.data:
         raise HTTPException(status_code=404, detail="Config not found")
 
-    updates = payload.model_dump(exclude_none=True)
+    updates = payload.model_dump(exclude_none=True, exclude={"location", "salary", "date_range"})
 
     if payload.salary:
         updates["salary"] = payload.salary.model_dump()
     if payload.date_range:
         updates["date_range"] = payload.date_range.model_dump()
     if payload.location:
-        updates["location"] = payload.location.model_dump()
-
+        updates["location_mode"] = payload.location.mode
+        updates["include_locations"] = payload.location.includes
+        updates["exclude_locations"] = payload.location.excludes
+        
     if not updates:
         raise HTTPException(status_code=400, detail="No fields to update")
 
@@ -234,7 +239,7 @@ async def update_dashboard_config(
 
 
 @router.delete("/dashboard-configs/{config_id}")
-async def delete_dashboard_config(config_id: UUID, current_user: str = Depends(get_current_user)):
+async def delete_dashboard_config(config_id: UUID, current_user: dict = Depends(get_current_user)):
     existing = (
         supabase_admin
         .table("dashboard_configs")
@@ -252,7 +257,7 @@ async def delete_dashboard_config(config_id: UUID, current_user: str = Depends(g
 
 
 @router.post("/dashboard-configs/{config_id}/launch")
-async def launch_dashboard_config(config_id: UUID, current_user: str = Depends(get_current_user)):
+async def launch_dashboard_config(config_id: UUID, current_user: dict = Depends(get_current_user)):
     """Activate a config — sets active=True, deactivates all others for this user."""
     existing = (
         supabase_admin
@@ -284,21 +289,115 @@ async def launch_dashboard_config(config_id: UUID, current_user: str = Depends(g
 
 # ─── Jobs Feed ────────────────────────────────────────────────────────────────
 
-### MODIFY THE TWO BELOW...
+
+def apply_config_filters(query, config: dict):
+    if config.get("job_types"):
+        query = query.in_("job_type", config["job_types"])
+
+    if config.get("seasons"):
+        query = query.in_("season", config["seasons"])
+
+    if config.get("include_fields"):
+        query = query.overlaps("fields", config["include_fields"])
+
+    if config.get("exclude_fields"):
+        for field in config["exclude_fields"]:
+            query = query.not_.contains("fields", [field])
+
+    if config.get("include_skills"):
+        query = query.overlaps("skills", config["include_skills"])
+
+    if config.get("exclude_skills"):
+        for skill in config["exclude_skills"]:
+            query = query.not_.contains("skills", [skill])
+
+    if config.get("location_mode") == "hard" and config.get("include_locations"):
+        query = query.overlaps("locations", config["include_locations"])
+
+    if config.get("exclude_locations"):
+        for loc in config["exclude_locations"]:
+            query = query.not_.contains("locations", [loc])
+
+    if config.get("exclude_companies"):
+        query = query.not_.in_("company", config["exclude_companies"])
+
+    if config.get("company_mode") == "hard" and config.get("include_companies"):
+        query = query.in_("company", config["include_companies"])
+
+## we'll have to mod this, perhaps trn jobs.duration into a json that holds stuff like; {duration: ..., start: ..., end: ...} instead
+    date_range = config.get("date_range")
+    if date_range:
+        if date_range.get("start"):
+            query = query.gte("scraped_at", date_range["start"])
+        if date_range.get("end"):
+            query = query.lte("scraped_at", date_range["end"])
+
+    return query
+
+
+# user can manually trigger it too (or you call it on dashboard open if last sync was >X hours ago).
+@router.post("/dashboard-configs/{config_id}/sync")
+async def sync_jobs_for_config(
+    config_id: UUID,
+    current_user: dict = Depends(get_current_user),
+):
+    
+    user_id = current_user["user_id"]
+    config_res = (
+        supabase_admin
+        .table("dashboard_configs")
+        .select("*")
+        .eq("id", str(config_id))
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+    )
+    if not config_res.data:
+        raise HTTPException(status_code=404, detail="Config not found")
+
+    config = config_res.data
+    last_synced = config.get("last_synced_at")
+
+    jobs_query = supabase_admin.table("jobs").select("id")
+    if last_synced:
+        jobs_query = jobs_query.gt("scraped_at", last_synced)
+    jobs_query = apply_config_filters(jobs_query, config)
+    jobs_res = jobs_query.execute()
+
+    if not jobs_res.data:
+        return {"synced": 0}
+
+    rows = [
+        {
+            "user_id": user_id,
+            "dashboard_config_id": str(config_id),
+            "job_id": job["id"],
+            "status": "new",
+        }
+        for job in jobs_res.data
+    ]
+
+    res = (
+        supabase_admin
+        .table("user_jobs")
+        .upsert(rows, on_conflict="user_id,job_id,dashboard_config_id", ignore_duplicates=True)
+        .execute()
+    )
+    
+    supabase_admin.table("dashboard_configs").update({"last_synced_at": datetime.utcnow().isoformat()}).eq("id", str(config_id)).execute()
+    return {"synced": len(res.data) if res.data else 0}
 
 
 @router.get("/dashboard-configs/{config_id}/jobs")
 async def get_jobs_for_config(
     config_id: UUID,
-    user_id: str = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     limit: int = 50,
     offset: int = 0,
-    min_score: Optional[float] = None,
+    status: Optional[str] = None,
 ):
-    """
-    Return jobs matched + scored against this config.
-    Assumes a user_jobs view/table with config_id, score, job_id FK to jobs.
-    """
+    user_id = current_user["user_id"]
+
     config_res = (
         supabase_admin
         .table("dashboard_configs")
@@ -315,93 +414,15 @@ async def get_jobs_for_config(
         supabase_admin
         .table("user_jobs")
         .select("*, jobs(*)")
-        .eq("config_id", str(config_id))
+        .eq("dashboard_config_id", str(config_id))
         .eq("user_id", user_id)
-        .order("score", desc=True)
+        .order("llm_score", desc=True, nulls_first=False)
+        .order("created_at", desc=True)
         .range(offset, offset + limit - 1)
     )
 
-    if min_score is not None:
-        query = query.gte("score", min_score)
+    if status:
+        query = query.eq("status", status)
 
     res = query.execute()
-    return {"jobs": res.data, "offset": offset, "limit": limit}
-
-
-@router.get("/dashboard-configs/{config_id}/jobs/new")
-async def get_new_jobs_for_config(
-    config_id: UUID,
-    user_id: str = Depends(get_current_user),
-    since: Optional[str] = None,   # ISO timestamp
-):
-    """
-    Poll for new jobs since a given timestamp.
-    Frontend can call this on an interval to show 'X new jobs' badge.
-    """
-    config_res = (
-        supabase_admin
-        .table("dashboard_configs")
-        .select("id")
-        .eq("id", str(config_id))
-        .eq("user_id", user_id)
-        .single()
-        .execute()
-    )
-    if not config_res.data:
-        raise HTTPException(status_code=404, detail="Config not found")
-
-    query = (
-        supabase_admin
-        .table("user_jobs")
-        .select("id, score, created_at, jobs(title, company, location)")
-        .eq("config_id", str(config_id))
-        .eq("user_id", user_id)
-        .eq("seen", False)
-        .order("created_at", desc=True)
-    )
-
-    if since:
-        query = query.gt("created_at", since)
-
-    res = query.execute()
-    return {"new_jobs": res.data, "count": len(res.data)}
-
-
-# ─── Notifications ────────────────────────────────────────────────────────────
-
-@router.post("/dashboard-configs/{config_id}/notify-settings")
-async def update_notify_settings(
-    config_id: UUID,
-    email_enabled: bool = True,
-    min_score_threshold: float = 0.75,
-    user_id: str = Depends(get_current_user),
-):
-    """
-    Update notification preferences for a config.
-    Stored as jsonb in notify_settings column on dashboard_configs.
-    """
-    existing = (
-        supabase_admin
-        .table("dashboard_configs")
-        .select("id")
-        .eq("id", str(config_id))
-        .eq("user_id", user_id)
-        .single()
-        .execute()
-    )
-    if not existing.data:
-        raise HTTPException(status_code=404, detail="Config not found")
-
-    settings = {
-        "email_enabled": email_enabled,
-        "min_score_threshold": min_score_threshold,
-    }
-
-    res = (
-        supabase_admin
-        .table("dashboard_configs")
-        .update({"notify_settings": settings})
-        .eq("id", str(config_id))
-        .execute()
-    )
-    return res.data[0]
+    return {"jobs": res.data, "offset": offset, "limit": limit, "count": len(res.data)}
