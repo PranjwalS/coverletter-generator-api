@@ -82,7 +82,8 @@ CREATE TABLE dashboard_configs (
 
     active BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_synced_at TIMESTAMP WITH TIME ZONE,
 );
 
 CREATE INDEX idx_dashboard_configs_profile_id ON dashboard_configs(profile_id);
@@ -111,7 +112,8 @@ CREATE TABLE jobs (
     salary          JSONB,
     duration        TEXT,
     scraped_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    job_type        TEXT,
 );
 
 CREATE UNIQUE INDEX idx_jobs_url        ON jobs(url);
@@ -157,7 +159,7 @@ CREATE TABLE user_jobs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
-    CONSTRAINT unique_user_job UNIQUE (user_id, job_id)
+    CONSTRAINT unique_user_job UNIQUE (user_id, job_id, dashboard_config_id)
 );
 
 -- Critical compound index for dashboard queries

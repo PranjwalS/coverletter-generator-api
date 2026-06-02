@@ -60,9 +60,20 @@ pseudo code config specific filtering per dashboard config, works as function fo
      ill just run a job whre it auto fetches from the non already in user jobs to get added to user_jobs basically
 
     so maybe; (the first two run whenever a user particularly clicks on a dashboard)
-    GET /dashboard/{id}/existing   → just returns user_jobs for this config, already scored
-    GET /dashboard/{id}/new        → fetches fresh jobs not in user_jobs, scores them, returns ; so the new endpoint is really just "sync latest" — runs fast if nothing new, does real work if there are new jobs to score and add
-    CRON daily                     → auto-runs the new job fetch + scoring for all active users
+    # POST /dashboard/{id}/sync
+    #   → filters master jobs table against config
+    #   → inserts missing ones into user_jobs (score=null, status='new')
+    #   → returns count of new jobs added
+
+    # GET /dashboard/{id}/jobs
+    #   → returns paginated user_jobs for this config
+    #   → sorted by score desc (nulls last), then created_at desc
+
+    # CRON daily   → auto-runs the new job fetch using the POST above and initiates the > scoring/generation pipeline for all active users
 
 
 i believe, if a user was to edit their dashboard configs immensely, then flush all history in /existing         
+
+
+# user can manually trigger it too (or you call it on dashboard open if last sync was >X hours ago).
+REGARDING THE POST ^

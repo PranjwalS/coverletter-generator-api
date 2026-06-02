@@ -74,3 +74,6 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate user")
 
+
+
+### HAVE TO IMPLEMENT REDIS_CLIENT HERE AND ATTACH WITH MAIN AND DASHBOARD ENDPOINTS PY FILES
