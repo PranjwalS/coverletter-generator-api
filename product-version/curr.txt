@@ -5,11 +5,11 @@ Firstly prepare to refine it, seems very empty and lean right now, so start desi
 Secondly, also decide any further side products to includes, to put into PRODUCTS in dashboard_layout basically, we already have the cv parser and coverletter generator, but further make a list of elements, and first make and test them in PRODUCTS and then integrate into the actual main jobscout flow as needed but still keep in PRODUCTS
 
 now mainly, we on backend;
-    1. User creation_dashboard pseudo and design the creation dashboard backend logic.
-    2. Expand the static jsons for skills and fields, and fetch proper dbs or apis for location and company lists
+    X. User creation_dashboard pseudo and design the creation dashboard backend logic.
+    X. Expand the static jsons for skills and fields, and fetch proper dbs or apis for location and company lists
     3. Fix up the entire scraper logic based on pseudo, review it and make it work appropriately for the dashboard logic
-    4. Expand sections of the Schema particularly the dashboard_configs table with new columns (refer to creation_dashboard initially)
-    5. Fix up the pseudo and then the code logic for personal_dashboard, so basically the full end to end filtering logic and endpoint based on config choices
+    X. Expand sections of the Schema particularly the dashboard_configs table with new columns (refer to creation_dashboard initially)
+    X. Fix up the pseudo and then the code logic for personal_dashboard, so basically the full end to end filtering logic and endpoint based on config choices
     
     we on frontend;
     1. Make the full flow UI for the creation_dashboard
