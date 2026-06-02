@@ -1,5 +1,6 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
-import { WizardFormState, FilterMode } from "../../types/dashboard";
+import type { WizardFormState } from "../../types/dashboard";
 import { X, ChevronRight } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";

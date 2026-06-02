@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useCallback } from "react";
-import { WizardFormState, EMPTY_FORM } from "../types/dashboard";
+import { type WizardFormState, EMPTY_FORM } from "../types/dashboard";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 

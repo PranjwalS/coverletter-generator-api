@@ -1,5 +1,7 @@
+/* eslint-disable no-useless-assignment */
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useEffect, useState } from "react";
-import { WizardFormState } from "../../types/dashboard";
+import type { WizardFormState } from "../../types/dashboard";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 

@@ -1,4 +1,4 @@
-import { WizardFormState, Season, SEASON_LABELS, WORK_DURATIONS, SalaryType } from "../../types/dashboard";
+import { type WizardFormState, Season, SEASON_LABELS, WORK_DURATIONS, SalaryType } from "../../types/dashboard";
 
 interface Props {
   form: WizardFormState;

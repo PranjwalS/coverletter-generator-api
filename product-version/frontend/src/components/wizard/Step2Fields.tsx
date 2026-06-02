@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { WizardFormState } from "../../types/dashboard";
+import type { WizardFormState } from "../../types/dashboard";
 import { X } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";

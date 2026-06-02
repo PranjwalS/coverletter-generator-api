@@ -9,6 +9,7 @@ import CareerTwinInfoPage from "./pages/CareerTwinInfoPage";
 import CareerTwinProfilePage from "./pages/CareerTwinProfilePage";
 import CVPage from "./pages/CVPage";
 import CoverLetterPage from "./pages/CoverLetterPage";
+import NewDashboardPage from "./pages/NewDashboardPage";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem("token");
@@ -39,6 +40,8 @@ export default function App() {
           <Route path="careertwin/info" element={<CareerTwinInfoPage />} />
           <Route path="products/cv" element={<CVPage />} />
           <Route path="products/coverletter" element={<CoverLetterPage />} />
+          {/* Wizard lives inside the dashboard layout so sidebar stays visible */}
+          <Route path="new" element={<NewDashboardPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -46,37 +49,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-
-
-
-// import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-// import LandingPage from "./pages/LandingPage";
-// import LoginPage from "./pages/LoginPage";
-// import SignupPage from "./pages/SignupPage";
-// import DashboardPage from "./pages/DashboardPage";
-
-// function PrivateRoute({ children }: { children: React.ReactNode }) {
-//   const token = localStorage.getItem("token");
-//   return token ? <>{children}</> : <Navigate to="/login" replace />;
-// }
-
-// export default function App() {
-//   return (
-//     <BrowserRouter>
-//       <Routes>
-//         <Route path="/" element={<LandingPage />} />
-//         <Route path="/login" element={<LoginPage />} />
-//         <Route path="/signup" element={<SignupPage />} />
-//         <Route
-//           path="/dashboard"
-//           element={
-//             <PrivateRoute>
-//               <DashboardPage />
-//             </PrivateRoute>
-//           }
-//         />
-//         <Route path="*" element={<Navigate to="/" replace />} />
-//       </Routes>
-//     </BrowserRouter>
-//   );
-// }
