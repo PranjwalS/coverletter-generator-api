@@ -185,16 +185,15 @@ def layer2_dedup(
         return "skip", None
     
     tc_key = (title.lower().strip(), company.lower().strip())
-
     if tc_key in title_company_map:
-        existing = title_company_map[tc_key]
-        sim = desc_similarity(desc_text, existing.get("description") or "")
-        if sim > 0.85:
-            existing_locs = existing.get("locations") or [existing.get("location", "")]
-            if job_location in existing_locs:
-                return "replace", existing
-            else:
-                return "merge", existing
+        for existing in title_company_map[tc_key]:
+            sim = desc_similarity(desc_text, existing.get("description") or "")
+            if sim > 0.85:
+                existing_locs = existing.get("locations") or []
+                if job_location in existing_locs:
+                    return "replace", existing
+                else:
+                    return "merge", existing
 
         return "insert", None
     return "insert", None
@@ -342,17 +341,61 @@ def layer5_insert_jobs(batch: list[dict]) -> int:
         return 0
 
 
+def layer5_replace(
+    existing: dict,
+    url: str,
+    desc_text: str,
+    matched_fields: list[str],
+    matched_skills: list[str],
+    salary: dict | None,
+    duration: dict | None,
+    season: dict | None,
+    requirements: dict | None,
+    url_set: set[str],
+    title_company_map: dict,
+    tc_key: tuple[str, str],
+) -> None:
+    try:
+        supabase.table("jobs").update({
+            "url":          url,
+            "description":  desc_text,
+            "fields":       matched_fields,
+            "skills":       matched_skills,
+            "salary":       salary,
+            "duration":     duration,
+            "season":       season,
+            "requirements": requirements,
+            "scraped_at":   datetime.now().isoformat(),
+        }).eq("id", existing["id"]).execute()
+        url_set.discard(existing.get("url"))
+        url_set.add(url)
+        title_company_map[tc_key]["url"] = url
+        print(f"[layer5] REPLACE: {existing.get('title')} @ {existing.get('company')}")
+    except Exception as e:
+        print(f"[layer5] replace error: {e}")
 
-def run():
-    ## NOTE: this only handles INSERT path (new jobs) with the current layer5_insert_jobs.
-    ## replace and merge paths from layer2 are handled separately in run() —
-    ## replace: update existing row with new url + refreshed metadata
-    ## merge: append new location to existing row's locations array
-    ## TODO: implement layer5_replace and layer5_merge when wiring run()
-    pass
 
-#-------------------------------------------------------------#
-### Fetch full job description + tags from LinkedIn job posting
+def layer5_merge(
+    existing: dict,
+    job_location: str,
+    url: str,
+    url_set: set[str],
+    title_company_map: dict,
+    tc_key: tuple[str, str],
+) -> None:
+    try:
+        existing_locs = existing.get("locations") or []
+        merged_locs   = list(dict.fromkeys(existing_locs + [job_location]))
+        supabase.table("jobs").update({
+            "locations": merged_locs,
+        }).eq("id", existing["id"]).execute()
+        title_company_map[tc_key]["locations"] = merged_locs
+        url_set.add(url)
+        print(f"[layer5] MERGE: {existing.get('title')} @ {existing.get('company')} → {merged_locs}")
+    except Exception as e:
+        print(f"[layer5] merge error: {e}")
+
+
 def fetch_job_detail(job_id: str) -> tuple[str, list[str]]:
     try:
         resp = requests.get(
@@ -371,72 +414,61 @@ def fetch_job_detail(job_id: str) -> tuple[str, list[str]]:
 
 
 
-#-------------------------------------------------------------#
-### Main scraper run
+### MAIN RUN:
 def run():
     print(f"[scraper] run started at {datetime.now().isoformat()}")
 
-    ## --- pull configs ---
     configs = fetch_all_dashboard_configs()
     if not configs:
         print("[scraper] no active configs — exiting")
         return
-
     print(f"[scraper] {len(configs)} active dashboard config(s) loaded")
 
-    ## --- build union sets across all users ---
+
     skills, fields, locations, job_types = build_sets(configs)
-    if not skills or not fields or not locations or not job_types:
+    if not skills and not fields and not locations and not job_types:
         return
 
-    ex_skills: set[str] = set()
-    ex_fields: set[str] = set()
-    for cfg in configs:
-        for s in (cfg.get("exclude_skills") or []):
-            ex_skills.add(s.lower().strip())
-        for f in (cfg.get("exclude_fields") or []):
-            ex_fields.add(f.lower().strip())
 
-    ## --- compute votes and build search matrix ---
     votes         = compute_votes(configs)
     search_matrix = build_search_matrix(fields, locations, job_types, votes)
-
     if not search_matrix:
         print("[scraper] empty search matrix — exiting")
         return
-
     print(f"[scraper] search matrix: {len(search_matrix)} entries")
 
-    ## --- pull existing jobs into memory for dedup ---
+
     existing_resp = supabase.table("jobs").select("id, url, title, company, locations, description").execute()
     existing_rows = existing_resp.data or []
-
-    url_set: set[str] = {r["url"] for r in existing_rows}
-    title_company_map: dict[tuple[str, str], dict] = {
-        (r["title"].lower().strip(), r["company"].lower().strip()): r
-        for r in existing_rows
-    }
-
+    url_set: set[str] = {r["url"] for r in existing_rows if r.get("url")}
+    title_company_map: dict[tuple[str, str], list[dict]] = {}
+    for r in existing_rows:
+        key = (r["title"].lower().strip(), r["company"].lower().strip())
+        title_company_map.setdefault(key, []).append(r)
     print(f"[scraper] {len(url_set)} existing jobs loaded into memory")
+
 
     ## --- scrape ---
     total_inserted  = 0
-    country_scraped: dict[str, int] = {}
+    trio_scraped: dict[tuple[str, str, str], int] = {}  ## (keyword, country, job_type) → count
 
     for keyword, country, job_type, depth_limit in search_matrix:
         if total_inserted >= MAX_JOBS_TOTAL:
             break
 
-        if country_scraped.get(country, 0) >= depth_limit:
-            continue
+        trio_key = (keyword, country, job_type)
+        print(f"\n[scraper] keyword='{keyword}' | country='{country}' | job_type='{job_type}' | depth={depth_limit}")
 
-        print(f"\n[scraper] keyword='{keyword}' | country='{country}' | depth={depth_limit}")
         start = 0
+        batch: list[dict] = []
 
-        while total_inserted < MAX_JOBS_TOTAL:
-            if country_scraped.get(country, 0) >= depth_limit:
+        while True:
+            if trio_scraped.get(trio_key, 0) >= depth_limit:
+                break
+            if total_inserted >= MAX_JOBS_TOTAL:
                 break
 
+            ## --- fetch page of cards ---
             try:
                 resp = requests.get(
                     "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search",
@@ -459,90 +491,66 @@ def run():
                 break
 
             for card in cards:
-                ## --- pull basic card info ---
+                if trio_scraped.get(trio_key, 0) >= depth_limit:
+                    break
+
+                ## --- extract card-level info ---
                 title_el = card.select_one("[class*=_title]")
                 title    = title_el.get_text(strip=True) if title_el else None
                 if not title:
                     continue
 
-                title_lower = title.lower()
-
-                ## --- layer 1: field must appear in title ---
-                if not layer1_field_in_title(title_lower, fields):
-                    continue
-
-                url_el = card.select_one("[class*=_full-link]")
-                url    = url_el["href"].split("?")[0] if url_el and url_el.get("href") else None
+                url_el  = card.select_one("[class*=_full-link]")
+                url     = url_el["href"].split("?")[0] if url_el and url_el.get("href") else None
                 if not url:
                     continue
 
-                company_el   = card.select_one("[class*=_subtitle]")
-                location_el  = card.select_one("[class*=_location]")
+                company_el  = card.select_one("[class*=_subtitle]")
+                location_el = card.select_one("[class*=_location]")
                 company      = company_el.get_text(strip=True)  if company_el  else "Unknown"
                 job_location = location_el.get_text(strip=True) if location_el else country
+                tc_key      = (title.lower().strip(), company.lower().strip())
 
-                title_key = title_lower.strip()
-                company_key = company.lower().strip()
-                tc_key = (title_key, company_key)
+                trio_scraped[trio_key] = trio_scraped.get(trio_key, 0) + 1
 
-                ## --- fetch full description ---
-                job_id = url.split("-")[-1]
-                desc_text, tags = fetch_job_detail(job_id)
+                ## --- layer 1: at least one field in title ---
+                if not layer1_fields_in_title(fields, title.lower()):
+                    continue
+                job_id              = url.split("-")[-1]
+                desc_text, _tags    = fetch_job_detail(job_id)
                 time.sleep(REQUEST_DELAY)
 
-                ## --- layer 3 + 4: relevance + metadata ---
-                matched_fields, matched_skills, requirements, salary, duration, is_relevant = layer3_extract_metadata(
-                    title, desc_text, skills, fields, ex_skills, ex_fields
+
+                ## --- layer 2: dedup ---
+                action, existing = layer2_dedup(
+                    url, title, company, job_location, desc_text, url_set, title_company_map
                 )
 
+                if action == "skip":
+                    continue
+
+                elif action == "replace":
+                    ## layer 3+4 still needed to refresh metadata on replace
+                    matched_fields, matched_skills, salary, duration, season, requirements, is_relevant = layer3_and_4_extract_metadata(
+                        title, desc_text, fields, skills
+                    )
+                    layer5_replace(existing, url, desc_text, matched_fields, matched_skills, salary, duration, season, requirements, url_set, title_company_map, tc_key)
+                    continue
+
+                elif action == "merge":
+                    ## no need for layer 3+4, just appending a location
+                    layer5_merge(existing, job_location, url, url_set, title_company_map, tc_key)
+                    continue
+
+                ### or inherently action == "insert"
+                ## --- layer 3 + 4: extract metadata + relevance check ---
+                matched_fields, matched_skills, salary, duration, season, requirements, is_relevant = layer3_and_4_extract_metadata(
+                    title, desc_text, fields, skills
+                )
                 if not is_relevant:
                     continue
 
-                ## --- layer 2: dedup ---
-                if url in url_set:
-                    continue
-
-                if tc_key in title_company_map:
-                    existing     = title_company_map[tc_key]
-                    sim          = desc_similarity(desc_text, existing.get("description") or "")
-                    existing_locs = existing.get("locations") or [existing.get("location", "")]
-                    same_location = job_location in existing_locs
-
-                    if sim > 0.85:
-                        if same_location:
-                            ## repost — replace
-                            try:
-                                supabase.table("jobs").update({
-                                    "url":         url,
-                                    "description": desc_text,
-                                    "fields":      matched_fields,
-                                    "skills":      matched_skills,
-                                    "requirements":requirements,
-                                    "salary":      salary,
-                                    "duration":    duration,
-                                    "scraped_at":  datetime.now().isoformat(),
-                                }).eq("id", existing["id"]).execute()
-                                url_set.discard(existing["url"])
-                                url_set.add(url)
-                                title_company_map[tc_key]["url"] = url
-                                print(f"[dedup] REPLACED repost: {title} @ {company}")
-                            except Exception as e:
-                                print(f"[dedup] replace error: {e}")
-                        else:
-                            ## same job, different location — merge
-                            try:
-                                merged_locs = list(set(existing_locs + [job_location]))
-                                supabase.table("jobs").update({
-                                    "locations": merged_locs,
-                                }).eq("id", existing["id"]).execute()
-                                title_company_map[tc_key]["locations"] = merged_locs
-                                print(f"[dedup] MERGED location: {title} @ {company} → {merged_locs}")
-                            except Exception as e:
-                                print(f"[dedup] merge error: {e}")
-                        url_set.add(url)
-                        continue
-
-                ## --- layer 5: insert new job ---
+                ## --- layer 5: queue for batch insert ---
                 item = {
                     "url":          url,
                     "title":        title,
@@ -551,27 +559,32 @@ def run():
                     "locations":    [job_location],
                     "description":  desc_text or None,
                     "source":       "linkedin",
+                    "job_type":     job_type,
                     "fields":       matched_fields,
                     "skills":       matched_skills,
-                    "requirements": requirements,
                     "salary":       salary,
                     "duration":     duration,
+                    "season":       season,
+                    "requirements": requirements,
                     "scraped_at":   datetime.now().isoformat(),
                 }
+                batch.append(item)
+                url_set.add(url)
+                title_company_map[(title.lower().strip(), company.lower().strip())] = item
 
-                try:
-                    supabase.table("jobs").insert(item).execute()
-                    url_set.add(url)
-                    title_company_map[tc_key] = item
-                    country_scraped[country]  = country_scraped.get(country, 0) + 1
-                    total_inserted           += 1
-                    print(f"[{total_inserted}] {title} @ {company} ({job_location})")
-                except Exception as e:
-                    if "duplicate" not in str(e).lower():
-                        print(f"[scraper] insert error: {e}")
-                    continue
+
+            inserted      = layer5_insert_jobs(batch)
+            total_inserted += inserted
+            print(f"[layer5] inserted {inserted} jobs | total={total_inserted}")
+            batch.clear()
 
             start += 10
+
+        ## flush any remainder (shouldn't happen but safety net)
+        if batch:
+            inserted       = layer5_insert_jobs(batch)
+            total_inserted += inserted
+            batch.clear()
 
     print(f"\n[scraper] finished at {datetime.now().isoformat()} — {total_inserted} new jobs inserted")
 
