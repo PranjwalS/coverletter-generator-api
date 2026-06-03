@@ -190,7 +190,7 @@ def layer2_dedup(
         existing = title_company_map[tc_key]
         sim = desc_similarity(desc_text, existing.get("description") or "")
         if sim > 0.85:
-            existing_locs = existing.get("locations")
+            existing_locs = existing.get("locations") or [existing.get("location", "")]
             if job_location in existing_locs:
                 return "replace", existing
             else:
@@ -331,8 +331,25 @@ def layer3_and_4_extract_metadata(
     return matched_fields, matched_skills, salary, duration, season, requirements, is_relevant
 
 
+def layer5_insert_jobs(batch: list[dict]) -> int:
+    if not batch:
+        return 0
+    try:
+        supabase.table("jobs").insert(batch).execute()
+        return len(batch)
+    except Exception as e:
+        print(f"[layer5] insert error: {e}")
+        return 0
 
 
+
+def run():
+    ## NOTE: this only handles INSERT path (new jobs) with the current layer5_insert_jobs.
+    ## replace and merge paths from layer2 are handled separately in run() —
+    ## replace: update existing row with new url + refreshed metadata
+    ## merge: append new location to existing row's locations array
+    ## TODO: implement layer5_replace and layer5_merge when wiring run()
+    pass
 
 #-------------------------------------------------------------#
 ### Fetch full job description + tags from LinkedIn job posting
