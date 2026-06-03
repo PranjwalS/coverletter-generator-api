@@ -120,7 +120,21 @@ def build_search_matrix(fields: set[str], locations: set[str], job_types: set[st
     
     
     
-### Layer 2 code;
+    
+### layers 1-5;
+
+def layer1_fields_in_title(fields: set[str], title_lower: str) -> bool:
+    supersets = {FIELD_SUPERSET.get(f) for f in fields} - {None}
+    
+    for f in fields:
+        if f in title_lower:
+            return True
+    for broad in supersets:
+        if broad in title_lower:
+            return True
+    return False
+    
+    
 def layer2_dedup(
     url: str,
     title: str,
@@ -157,7 +171,7 @@ def layer2_dedup(
     return "insert", None
 
 
-    
+
     
 #-------------------------------------------------------------#
 ### HAVE TO REVIEW AND PERHAPS REWRITE EVERYTHING BELOW OF HERE
