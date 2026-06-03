@@ -72,12 +72,25 @@ async def get_skills():
 @router.get("/meta/fields")
 async def get_fields():
     with open("data/new_fields.json", "r") as f:
-        return json.load(f)
+        data = json.load(f)
+    # Return just the top-level category names as the field list
+    return list(data["fields"].keys())
 
 @router.get("/meta/locations")
 async def get_locations():
     with open("data/locations.json", "r") as f:
-        return json.load(f)
+        data = json.load(f)
+    
+    # Group cities by country
+    country_map = {}
+    for loc in data["locations"]:
+        country = loc["country"]
+        if country not in country_map:
+            country_map[country] = []
+        if loc["value"] != country:  # skip "Canada (any)" type entries
+            country_map[country].append(loc["label"])
+    
+    return [{"name": country, "cities": cities} for country, cities in country_map.items()]
 
 @router.get("/meta/companies")
 async def get_companies(search: str = ""):
@@ -94,29 +107,24 @@ async def get_companies(search: str = ""):
 
 @router.get("/meta/skills-by-fields")
 async def get_skills_by_fields(fields: str = ""):
-    
     with open("data/skills.json", "r") as f:
         all_skills = json.load(f)
 
     if not fields:
-        return all_skills
+        # Return all skills flattened
+        result = []
+        for field_skills in all_skills.values():
+            for category_skills in field_skills.values():
+                result.extend(category_skills)
+        return list(set(result))
 
-    requested = {f.strip().lower() for f in fields.split(",")}
-
-    # skills.json expected shape: { "field_name": ["skill1", "skill2", ...], ... }
-    # or flat list — handle both
-    if isinstance(all_skills, dict):
-        result = {}
-        for field, skills in all_skills.items():
-            if field.lower() in requested:
-                result[field] = skills
-        return result if result else all_skills
-
-    # flat list — just return everything (can refine later)
-    return all_skills
-
-
-
+    requested = {f.strip() for f in fields.split(",")}
+    result = []
+    for field, categories in all_skills.items():
+        if field in requested:
+            for category_skills in categories.values():
+                result.extend(category_skills)
+    return list(set(result))
 
 
 

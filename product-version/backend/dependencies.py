@@ -77,3 +77,4 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(bearer_
 
 
 ### HAVE TO IMPLEMENT REDIS_CLIENT HERE AND ATTACH WITH MAIN AND DASHBOARD ENDPOINTS PY FILES
+redis_client = None

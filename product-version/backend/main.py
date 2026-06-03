@@ -18,7 +18,7 @@ from functions.pdf_generator import generate_cover_letter_pdf, get_cover_letter_
 import uuid
 from fastapi.staticfiles import StaticFiles
 from routes.creation_dashboard import router as dashboard_router
-from dependencies import supabase_admin, supabase, get_current_user, FRONTEND_ORIGIN
+from dependencies import supabase_admin, supabase, get_current_user, FRONTEND_ORIGIN, redis_client
 import csv
 
 app = FastAPI()
@@ -47,6 +47,11 @@ async def load_companies_cache():
                 "country": row["Country"],
                 "continent": row["Continent"],
             })
+    
+    if not redis_client:
+        print("Redis not configured, skipping companies cache")
+        return
+    
     redis_client.setex("companies_list", 86400, json.dumps(companies))
     
     
