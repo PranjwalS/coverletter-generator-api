@@ -109,32 +109,7 @@ new pipeline; scraper gets meatier;
 
 revisit fields.json; refactor as in, make the subfields a little broader but maintain the {superfield: field} form as is currently
 
+make sure that in layer 3 + 4; that we create sets that basically fetch all the relevant data from the title + desc and redistribute them; go back into fields and skills.json and fetch all
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+layer 5 has also its own basically uhh spot in the db but its basically the last step of the flow, gets called with all the data on the job + all the sets from layer3+4; and then just adds to jobs schema
+        layer 5 to do the full updates; called once per inner while loop in run()

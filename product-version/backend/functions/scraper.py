@@ -23,6 +23,7 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 DATA_DIR = pathlib.Path(__file__).parent.parent / "data"
 
 FIELDS_DATA    = json.loads((DATA_DIR / "fields.json").read_text())
+SKILLS_DATA    = json.loads((DATA_DIR / "skills.json").read_text())
 LOCATIONS_DATA = json.loads((DATA_DIR / "locations.json").read_text())
 
 FIELD_SUPERSET = {f["value"]: f["superset"] for f in FIELDS_DATA["fields"]}
@@ -119,6 +120,34 @@ def build_search_matrix(fields: set[str], locations: set[str], job_types: set[st
     ]
     
     
+def _build_global_sets_skills_n_fields() -> tuple[set[str], set[str]]:
+    all_fields: set[str] = set()
+    all_skills: set[str] = set()
+
+    ## flatten fields.json — just grab all values
+    for f in FIELDS_DATA["fields"]:
+        all_fields.add(f["value"].lower())
+    ## also add supersets
+    for s in FIELDS_DATA.get("supersets", []):
+        all_fields.add(s.lower())
+
+    ## flatten skills.json — recurse through every list regardless of nesting
+    def extract_strings(obj):
+        if isinstance(obj, list):
+            for item in obj:
+                yield from extract_strings(item)
+        elif isinstance(obj, dict):
+            for v in obj.values():
+                yield from extract_strings(v)
+        elif isinstance(obj, str):
+            yield obj.lower()
+
+    all_skills = set(extract_strings(SKILLS_DATA))
+
+    return all_fields, all_skills
+
+GLOBAL_FIELDS, GLOBAL_SKILLS = _build_global_sets_skills_n_fields()
+    
     
     
 ### layers 1-5;
@@ -172,73 +201,96 @@ def layer2_dedup(
 
 
 
+def extract_salary(combined: str) -> dict | None:
+    SALARY_PATTERNS = [
+        (r'(?:\$|CAD|USD|C\$)\s*(\d[\d,]*(?:\.\d+)?)\s*(?:[-–]\s*(?:\$|CAD|USD|C\$)?\s*(\d[\d,]*(?:\.\d+)?))?\s*(?:\/\s*(?:hr|hour)|per\s+hour)', "hourly"),
+        (r'(?:\$|CAD|USD|C\$)\s*(\d[\d,]*(?:\.\d+)?)\s*(?:[-–]\s*(?:\$|CAD|USD|C\$)?\s*(\d[\d,]*(?:\.\d+)?))?\s*(?:\/\s*(?:wk|week)|per\s+week)', "weekly"),
+        (r'(?:\$|CAD|USD|C\$)\s*(\d[\d,]*(?:\.\d+)?)\s*(?:k|,000)?\s*(?:[-–]\s*(?:\$|CAD|USD|C\$)?\s*(\d[\d,]*(?:\.\d+)?)\s*(?:k|,000)?)?\s*(?:CAD|USD)?\s*(?:\/\s*(?:yr|year)|per\s+(?:year|annum)|annually)', "annual"),
+        (r'(\d+)\s*(?:k|,000)\s*(?:[-–]\s*(\d+)\s*(?:k|,000)?)\s*(?:CAD|USD|per\s+year|annually)?', "annual"),
+        (r'(?:salary|compensation|pay|rate|stipend|wage)[:\s]+(?:\$|CAD|USD|C\$)?\s*(\d[\d,]+)', "unknown"),
+    ]
     
-#-------------------------------------------------------------#
-### HAVE TO REVIEW AND PERHAPS REWRITE EVERYTHING BELOW OF HERE
-#-------------------------------------------------------------#
-### Layer 3: extract metadata from title + description
-def layer3_extract_metadata(
+    matches = []
+    seen = set()
+    for pattern, pay_type in SALARY_PATTERNS:
+        for m in re.finditer(pattern, combined, re.IGNORECASE):
+            raw = m.group(0).strip()
+            if raw not in seen:
+                matches.append({"type": pay_type, "raw": raw})
+                seen.add(raw)
+    
+    return {"matches": matches} if matches else None
+
+    
+def layer3_and_4_extract_metadata(
     title: str,
     desc_text: str,
-    skills: set[str],
-    fields: set[str],
-    ex_skills: set[str],
-    ex_fields: set[str],
-) -> tuple[list[str], list[str], dict | None, dict | None, str | None, bool]:
-    title_lower = title.lower()
-    desc_lower  = desc_text.lower()
-    combined    = title_lower + " " + desc_lower
+    include_fields: set[str],
+    include_skills: set[str],
+) -> tuple[list[str], list[str], dict | None, dict | None, dict | None, dict | None, bool]:
+    """
+    Extracts all possible metadata from title + desc against global sets.
+    Then checks overlap against included fields/skills to determine relevance.
+    Returns: (matched_fields, matched_skills, salary, duration, season, requirements, is_relevant)
+    """
+    combined = (title + " " + desc_text).lower()
 
-    ## --- exclude check first, bail early ---
-    for ex in ex_fields:
-        if ex in combined:
-            return [], [], None, None, None, False
-    for ex in ex_skills:
-        if re.search(rf'\b{re.escape(ex)}\b', combined):
-            return [], [], None, None, None, False
+    matched_fields = [f for f in GLOBAL_FIELDS if re.search(rf'\b{re.escape(f)}\b', combined)]
+    matched_skills = [s for s in GLOBAL_SKILLS if re.search(rf'\b{re.escape(s)}\b', combined)]
 
-    ## --- match fields ---
-    matched_fields: list[str] = []
-    for f in fields:
-        if f == "ai":
-            if re.search(r'\bai\b', combined):
-                matched_fields.append(f)
-        elif f in combined:
-            matched_fields.append(f)
+    salary = extract_salary(combined)
 
-    ## also check superset keys (broad categories)
-    for broad in FIELD_SUPERSET:
-        if broad in combined and broad not in matched_fields:
-            matched_fields.append(broad)
-
-    ## --- match skills ---
-    matched_skills: list[str] = []
-    for s in skills:
-        if s == "c":
-            if re.search(r'\bc\b', combined):
-                matched_skills.append(s)
-        elif s == "r":
-            if re.search(r'\br\b', combined):
-                matched_skills.append(s)
-        elif s in combined:
-            matched_skills.append(s)
-
-    ## --- layer 4: salary ---
-    salary: dict | None = None
-    salary_patterns = [
-        r'\$\s*(\d[\d,]*)\s*(?:k|,000)?\s*(?:[-–]\s*\$?\s*(\d[\d,]*)\s*(?:k|,000)?)?\s*(?:\/\s*(?:hr|hour|yr|year|annum))?',
-        r'(\d+)\s*(?:k|,000)\s*(?:[-–]\s*(\d+)\s*(?:k|,000)?)?\s*(?:per\s+(?:year|hour|annum))?',
-        r'(?:salary|compensation|pay|rate)[:\s]+\$?\s*(\d[\d,]+)',
+    ## hardcoded for now ig
+    SEASON_SIGNALS = [
+        "spring", "summer", "fall", "autumn", "winter",
+        "q1", "q2", "q3", "q4",
+        "january", "february", "march", "april", "may", "june",
+        "july", "august", "september", "october", "november", "december",
     ]
-    for pattern in salary_patterns:
-        m = re.search(pattern, combined, re.IGNORECASE)
-        if m:
-            salary = {"raw": m.group(0).strip()}
-            break
+    SEASON_PATTERNS = [
+        r'(spring|summer|fall|autumn|winter)\s*(?:\d{4})?',
+        r'(q[1-4])\s+(\d{4})',
+        r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})',
+    ]
+    season: dict | None = None
+    found_season_signals = [s for s in SEASON_SIGNALS if s in combined]
+    if found_season_signals:
+        season_matches = []
+        for pattern in SEASON_PATTERNS:
+            for m in re.finditer(pattern, combined, re.IGNORECASE):
+                season_matches.append(m.group(0).strip())
+        season = {
+            "signals": found_season_signals,
+            "matches": list(dict.fromkeys(season_matches)),  ## dedup, preserve order
+        } if season_matches else {"signals": found_season_signals}
 
-    ## --- layer 4: requirements ---
-    requirements: dict | None = None
-    req_signals = [
+
+    DURATION_PATTERNS = [
+        r'(\d+)\s*[-–]?\s*(month|months)',
+        r'(\d+)\s*[-–]?\s*(week|weeks)',
+        r'(\d+)\s*[-–]?\s*(year|years)',
+        r'(full[- ]?year|year[- ]?long)',
+        r'(permanent|contract|temporary|fixed[- ]?term)',
+        r'(part[- ]?time|full[- ]?time)',
+        r'(\d{4}[-/]\d{2}[-/]\d{2})\s*[-–to]+\s*(\d{4}[-/]\d{2}[-/]\d{2})',  ## 2026-05-01 - 2027-08-31
+        r'(\d{4}[-/]\d{2}[-/]\d{2})\s*[-–to]+\s*(\d{4})',                      ## 2026-05-01 - 2027
+        r'(?:start(?:ing)?|begin(?:ning)?|commence[sd]?)[:\s]+(\w+ \d{1,2}(?:st|nd|rd|th)?,?\s*\d{4})',  ## starting September 1st, 2026
+        r'(?:start(?:ing)?|begin(?:ning)?)[:\s]+(\w+\s+\d{4})',                 ## starting May 2026
+        r'(\w+ \d{1,2}(?:st|nd|rd|th)?),?\s*(\d{4})\s*[-–to]+\s*(\w+ \d{1,2}(?:st|nd|rd|th)?),?\s*(\d{4})',  ## May 1st, 2026 - August 31st, 2026
+        r'(\d{1,2}\s+\w+\s+\d{4})\s*[-–to]+\s*(\d{1,2}\s+\w+\s+\d{4})'
+    ]
+    duration: dict | None = None
+    duration_matches = []
+    for pattern in DURATION_PATTERNS:
+        for m in re.finditer(pattern, combined, re.IGNORECASE):
+            duration_matches.append(m.group(0).strip())
+
+    if duration_matches:
+        duration = {"matches": list(dict.fromkeys(duration_matches))}
+
+
+    ## hardcoded for now ig
+    REQ_SIGNALS = [
         "bachelor", "master", "phd", "degree", "diploma",
         "pursuing", "enrolled", "currently studying",
         "gpa", "1st year", "2nd year", "3rd year", "4th year",
@@ -246,30 +298,40 @@ def layer3_extract_metadata(
         "years of experience", "year of experience",
         "no experience", "entry level", "junior",
     ]
-    found_reqs = [sig for sig in req_signals if sig in combined]
+    requirements: dict | None = None
+    found_reqs = [sig for sig in REQ_SIGNALS if sig in combined]
     if found_reqs:
-        snippet_start = max(0, combined.find(found_reqs[0]) - 50)
-        snippet_end   = min(len(combined), snippet_start + 300)
-        requirements  = {"signals": found_reqs, "snippet": combined[snippet_start:snippet_end]}
+        windows = []
+        for sig in found_reqs:
+            idx = combined.find(sig)
+            start = max(0, idx - 50)
+            end = min(len(combined), idx + 300)
+            windows.append((start, end))
 
-    ## --- layer 4: duration/season ---
-    duration: str | None = None
-    duration_patterns = [
-        r'(\d+)\s*[-–]?\s*month',
-        r'(fall|winter|summer|spring|autumn)\s+(?:term|semester|co-?op|internship|placement)',
-        r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}',
-        r'(q[1-4])\s+\d{4}',
-        r'(full[- ]?year|year[- ]?long|permanent|contract)',
-        r'(\d+)\s*(?:week|weeks)',
-    ]
-    for dp in duration_patterns:
-        m = re.search(dp, combined, re.IGNORECASE)
-        if m:
-            duration = m.group(0).strip()
-            break
+        ## merge overlapping intervals
+        windows.sort()
+        merged = [windows[0]]
+        for start, end in windows[1:]:
+            if start <= merged[-1][1]:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+            else:
+                merged.append((start, end))
 
-    is_relevant = bool(matched_fields or matched_skills)
-    return matched_fields, matched_skills, requirements, salary, duration, is_relevant
+        snippets = [combined[s:e] for s, e in merged]
+        requirements = {"signals": found_reqs, "snippets": snippets}
+        
+
+    matched_fields_set = set(matched_fields)
+    matched_skills_set = set(matched_skills)
+    is_relevant = bool(
+        matched_fields_set & include_fields or
+        matched_skills_set & include_skills
+    )
+
+    return matched_fields, matched_skills, salary, duration, season, requirements, is_relevant
+
+
+
 
 
 #-------------------------------------------------------------#
@@ -290,21 +352,6 @@ def fetch_job_detail(job_id: str) -> tuple[str, list[str]]:
     except Exception:
         return "", []
 
-
-#-------------------------------------------------------------#
-### Layer 1: at least one user field must appear in the title
-def layer1_field_in_title(title_lower: str, fields: set[str]) -> bool:
-    for f in fields:
-        if f == "ai":
-            if re.search(r'\bai\b', title_lower):
-                return True
-        elif f in title_lower:
-            return True
-    ## also accept if a superset key appears in the title
-    for broad in FIELD_SUPERSET:
-        if broad in title_lower:
-            return True
-    return False
 
 
 #-------------------------------------------------------------#

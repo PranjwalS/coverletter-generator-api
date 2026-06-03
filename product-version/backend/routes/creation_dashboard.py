@@ -297,7 +297,14 @@ async def launch_dashboard_config(config_id: UUID, current_user: dict = Depends(
 
 # ─── Jobs Feed ────────────────────────────────────────────────────────────────
 
-
+## NOTE: apply_config_filters is intentionally primitive for now.
+## This is per-user filtering that runs downstream after jobs are in the jobs table.
+## Current binary overlap logic (has field / doesn't) is too harsh and needs rework.
+## TODO: Replace with score-based filtering — each matched include skill/field = +points,
+## exclude appearing in title = hard kill, exclude in desc only = penalty.
+## Ties into the scoring system (cv-to-job, job-to-cv, LLM scoring) planned later in roadmap.
+## min_score_threshold from dashboard_configs should drive filtering, not binary overlaps.
+## Also: jobs.duration needs to become a JSON {duration, start, end} before date_range filter is useful.
 def apply_config_filters(query, config: dict):
     if config.get("job_types"):
         query = query.in_("job_type", config["job_types"])
