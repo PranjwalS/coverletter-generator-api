@@ -12,7 +12,7 @@ now mainly, we on backend;
     X. Fix up the pseudo and then the code logic for personal_dashboard, so basically the full end to end filtering logic and endpoint based on config choices
     
     we on frontend;
-    1. Make the full flow UI for the creation_dashboard
+    X. Make the full flow UI for the creation_dashboard
     2. Make page for edits to dashboard_configs for every dashboard
     3. Determine all different tables to be provided in every dashboard (all, applied, incoming, queue-bot, etc) and then create the proper grids for the tables, clean and straightforward with all the info, and all columns dynamic
             also ensure their is proper filtering, and searching logic setup, as well as quick bulk edits/deletion possibilities, and finally also analytics for every grids
@@ -43,6 +43,11 @@ now mainly, we on backend;
             “Am I wasting time?”
             “What jobs fit me best?”
 
+
+	Ending with:
+	O. Reviewing the usability on the front and refining the logic on the back and full finalizing before moving ahead
+
+	
     ...
     Elements left in mvp after the above;
         1. Auto Apply bot with LLM screenshot + form filling logic, following a queue of jobs

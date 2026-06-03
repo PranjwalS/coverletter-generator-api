@@ -89,3 +89,52 @@ back in scraper logic;
         Continue until all searches depleted
         
         Done?
+
+
+
+
+
+
+----
+
+
+Changes;
+
+new pipeline; scraper gets meatier;
+
+    scraper → passes layer 5 → insert into jobs → push job_id to Redis queue → continue
+
+    separate Celery worker (always running) → pulls from Redis queue → GIN query → batch insert user_jobs
+                                                                    -> GIN query checks every passing job, across all dashboard_configs available.
+
+revisit fields.json; refactor as in, make the subfields a little broader but maintain the {superfield: field} form as is currently
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

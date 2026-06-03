@@ -48,7 +48,7 @@ def desc_similarity(a: str, b: str) -> float:
 ### Fetch all data from table, and create sets and search_matrix
 def fetch_all_dashboard_configs() -> list[dict]:
     resp = supabase.table("dashboard_configs").select(
-        "id, profile_id, include_skills, include_fields, include_locations, job_types"
+        "id, profile_id, include_skills, include_fields, include_locations, job_types"  ## ignoring include_companies for now, not everyone has preferences on here, gets filtered later regardless.
     ).eq("active", True).execute()
     return resp.data or []
 
@@ -86,6 +86,7 @@ def compute_votes(configs: list[dict]) -> dict[tuple[str, str], int]:
                 votes[(superset, country)] = votes.get((superset, country), 0) + 1
     return votes
 
+
 ## will have to redesign depth logic in here though later!!
 def get_depth(superset: str, country: str, votes: dict[tuple[str, str], int]) -> int:
     return min(BASE_DEPTH * max(1, votes.get((superset, country), 1)), MAX_DEPTH)
@@ -116,6 +117,46 @@ def build_search_matrix(fields: set[str], locations: set[str], job_types: set[st
         for country in countries
         for job_type in job_types
     ]
+    
+    
+    
+### Layer 2 code;
+def layer2_dedup(
+    url: str,
+    title: str,
+    company: str,
+    job_location: str,
+    desc_text: str,
+    url_set: set[str],
+    title_company_map: dict[tuple[str, str], dict],
+) -> tuple[str, dict | None]:
+    """
+        Returns:
+        ("skip", None)        → already exists, nothing to do
+        ("replace", existing) → repost, same location, replace existing
+        ("merge", existing)   → same job, new location, merge locations
+        ("insert", None)      → new job, proceed with insert
+    """
+    
+    if url in url_set:
+        return "skip", None
+    
+    tc_key = (title.lower().strip(), company.lower().strip())
+
+    if tc_key in title_company_map:
+        existing = title_company_map[tc_key]
+        sim = desc_similarity(desc_text, existing.get("description") or "")
+        if sim > 0.85:
+            existing_locs = existing.get("locations")
+            if job_location in existing_locs:
+                return "replace", existing
+            else:
+                return "merge", existing
+
+        return "insert", None
+    return "insert", None
+
+
     
     
 #-------------------------------------------------------------#
