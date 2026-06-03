@@ -1,4 +1,4 @@
-import { WizardFormState, JOB_TYPE_LABELS, JobType } from "../../types/dashboard";
+import { type WizardFormState, JOB_TYPE_LABELS, type JobType } from "../../types/dashboard";
 
 interface Props {
   form: WizardFormState;

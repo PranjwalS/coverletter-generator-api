@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { WizardFormState, JOB_TYPE_LABELS, SEASON_LABELS, JobType, Season } from "../../types/dashboard";
+import { type WizardFormState, JOB_TYPE_LABELS, SEASON_LABELS, type JobType, type Season } from "../../types/dashboard"
 import { Loader2, Rocket, ExternalLink } from "lucide-react";
 
 interface Props {
