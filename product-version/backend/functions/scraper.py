@@ -570,13 +570,17 @@ def run():
                 }
                 batch.append(item)
                 url_set.add(url)
-                title_company_map[(title.lower().strip(), company.lower().strip())] = item
+                title_company_map.setdefault(tc_key, []).append(item)
 
 
             inserted      = layer5_insert_jobs(batch)
             total_inserted += inserted
             print(f"[layer5] inserted {inserted} jobs | total={total_inserted}")
-            batch.clear()
+            batch.clear()         
+            #  TODO: scraper → passes layer 5 → insert into jobs → push job_id to Redis queue → continue
+            #  TODO: separate Celery worker (always running) → pulls from Redis queue → GIN query → batch insert user_jobs
+            #                                                                 -> GIN query checks every passing job, across all dashboard_configs available.
+
 
             start += 10
 

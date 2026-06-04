@@ -18,11 +18,13 @@ from functions.pdf_generator import generate_cover_letter_pdf, get_cover_letter_
 import uuid
 from fastapi.staticfiles import StaticFiles
 from routes.creation_dashboard import router as dashboard_router
+from routes.jobs import router as job_router
 from dependencies import supabase_admin, supabase, get_current_user, FRONTEND_ORIGIN, redis_client
 import csv
 
 app = FastAPI()
 app.include_router(dashboard_router)
+app.include_router(job_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_ORIGIN, "http://localhost:5173"],

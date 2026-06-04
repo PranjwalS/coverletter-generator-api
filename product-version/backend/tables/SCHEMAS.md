@@ -154,6 +154,8 @@ CREATE TABLE user_jobs (
     
     -- Application tracking
     status TEXT DEFAULT 'new',     -- 'new', 'saved', 'applied', 'rejected', 'ignored', 'interview'
+    notes TEXT,
+    next_event TIMESTAMP WITH TIME ZONE,  -- upcoming interview, deadline, follow-up, whatever
     applied_at TIMESTAMP WITH TIME ZONE,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
