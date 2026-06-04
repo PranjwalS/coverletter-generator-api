@@ -21,6 +21,7 @@ now mainly, we on backend;
     back on backend;
     0. IMPORTANT: NOTE: apply_config_filters is intentionally primitive for now. TODO: Replace with score-based filtering — each matched include skill/field = +points, check the creation_dashboard file
     X. Plan out the full pseudo for the job_page and then write the full endpoint that will present all the info per job to frontend
+    1. Go modify the schemas for user_jobs to allow all the scoring details mentionned in scoring.py and also redo the llm scoring parts
     2. Write both scoring logics being cv to job desc and job desc to cv 
     3. Write scoring logic/prompts for llm based scoring too
     4. Plan out the automated_elements and start writing code that launches them on all dashboard_configs efficiently

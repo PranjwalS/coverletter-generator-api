@@ -158,32 +158,14 @@ def _cv_to_job_empty(reason: str) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
 # Score 2 — job_to_cv
-# "How well does this job align with what the user is actively looking for?"
-#
-# Source of truth: dashboard_config include/exclude lists.
-# Jobs that reach scoring already passed hard-filter layer 5, so this is NOT
-# a binary pass/fail — it's a preference signal on top of an already-acceptable
-# job.  We therefore start from a neutral 50 and move from there.
-#
-# Dimension weights (empirically motivated, not magic):
-#
 #   Skills  — highest weight.  Most explicit signal of what the user wants
 #             and what the job demands.  Positive AND negative matter equally.
-#
 #   Fields  — second.  Broader domain signal.  A job in the right field but
 #             with unfamiliar skills is still worth seeing; wrong field is a
 #             weak negative because hard-filter should have caught real misses.
-#
-#   Location — soft additive.  Many users don't care.  Never a hard penalty
-#              here (that's the filter layer's job).  A preferred city is a
-#              small bonus.
-#
-#   Company  — same as location: soft additive bonus for liked companies,
-#              very mild negative for disliked ones since hard-filter should
-#              block truly unwanted companies.
-#
+#   Location — soft additive. A preferred city is a small bonus.
+#   Company  — same as location: soft additive bonus for liked companies.
 # Scoring math:
 #   Each dimension produces a signed delta in [-1, 1] relative to what was
 #   possible in that dimension, then scaled by the dimension's weight and
@@ -196,7 +178,6 @@ def _cv_to_job_empty(reason: str) -> dict:
 #
 #   For location/company (binary presence, not ratio):
 #       +SOFT_BONUS if any include match
-#       -SOFT_PENALTY if any exclude match
 #
 #   Final:
 #       score = 50 + Σ(delta_i * weight_i * MAX_SWING)
@@ -205,8 +186,6 @@ def _cv_to_job_empty(reason: str) -> dict:
 # MAX_SWING is the maximum points any single dimension can move the score.
 # With weights summing to 1 and MAX_SWING=40, the theoretical range from
 # baseline is ±40 points, giving a practical range of [10, 90] for real jobs
-# (extreme ends require all dimensions maxing out in one direction).
-# ---------------------------------------------------------------------------
 
 SKILL_WEIGHT    = 0.45
 FIELD_WEIGHT    = 0.30
@@ -215,15 +194,14 @@ COMPANY_WEIGHT  = 0.12
 
 assert abs(SKILL_WEIGHT + FIELD_WEIGHT + LOCATION_WEIGHT + COMPANY_WEIGHT - 1.0) < 1e-9
 
-MAX_SWING   = 40.0   # max total points a perfectly aligned/misaligned job can swing
-SOFT_BONUS  = 0.6    # fraction of weight used for a binary location/company match
-SOFT_PENALTY = 0.3   # fraction of weight used for a binary exclude match (softer than include)
+MAX_SWING   = 40.0  
+SOFT_BONUS  = 0.6  
 
 
 def job_to_cv(
     job_skills_raw:    list[str],
     job_fields_raw:    list[str],
-    job_location:      str,
+    job_location:      str,      ## should be job_locations:    list[str] TOO
     job_company:       str,
     include_skills:    list[str],
     include_fields:    list[str],
@@ -231,17 +209,8 @@ def job_to_cv(
     include_companies: list[str],
     exclude_skills:    list[str],
     exclude_fields:    list[str],
-    exclude_locations: list[str],
-    exclude_companies: list[str],
 ) -> dict:
-    """
-    Returns:
-        {
-            "score":      int 0-100,
-            "breakdown":  dict per dimension,
-        }
-    """
-
+    
     job_skills  = normalize_skills(job_skills_raw)
     job_fields  = {f.lower().strip() for f in (job_fields_raw  or [])}
     loc         = (job_location or "").lower()
@@ -254,12 +223,9 @@ def job_to_cv(
 
     exc_skills    = normalize_skills(exclude_skills)
     exc_fields    = {f.lower().strip() for f in (exclude_fields    or [])}
-    exc_locs      = [l.lower().strip() for l in (exclude_locations or [])]
-    exc_companies = [c.lower().strip() for c in (exclude_companies or [])]
 
     breakdown = {}
 
-    # ---- Skills delta ----
     skill_inc_overlap = skill_intersection(job_skills, inc_skills)
     skill_exc_overlap = skill_intersection(job_skills, exc_skills)
     skill_inc_ratio   = len(skill_inc_overlap) / max(len(inc_skills), 1) if inc_skills else 0.0
@@ -271,7 +237,7 @@ def job_to_cv(
         "exc_matched": sorted(skill_exc_overlap),
     }
 
-    # ---- Fields delta ----
+
     field_inc_overlap = job_fields & inc_fields
     field_exc_overlap = job_fields & exc_fields
     field_inc_ratio   = len(field_inc_overlap) / max(len(inc_fields), 1) if inc_fields else 0.0
@@ -283,25 +249,20 @@ def job_to_cv(
         "exc_matched": sorted(field_exc_overlap),
     }
 
-    # ---- Location (soft binary) ----
+
     loc_delta = 0.0
     loc_inc_hit = any(l in loc for l in inc_locs) if inc_locs else False
-    loc_exc_hit = any(l in loc for l in exc_locs) if exc_locs else False
     if loc_inc_hit: loc_delta += SOFT_BONUS
-    if loc_exc_hit: loc_delta -= SOFT_PENALTY
     loc_delta = max(-1.0, min(1.0, loc_delta))
-    breakdown["location"] = {"delta": round(loc_delta, 3), "inc_hit": loc_inc_hit, "exc_hit": loc_exc_hit}
+    breakdown["location"] = {"delta": round(loc_delta, 3), "inc_hit": loc_inc_hit}
 
-    # ---- Company (soft binary) ----
     co_delta = 0.0
     co_inc_hit = any(c in company for c in inc_companies) if inc_companies else False
-    co_exc_hit = any(c in company for c in exc_companies) if exc_companies else False
     if co_inc_hit: co_delta += SOFT_BONUS
-    if co_exc_hit: co_delta -= SOFT_PENALTY
     co_delta = max(-1.0, min(1.0, co_delta))
-    breakdown["company"] = {"delta": round(co_delta, 3), "inc_hit": co_inc_hit, "exc_hit": co_exc_hit}
+    breakdown["company"] = {"delta": round(co_delta, 3), "inc_hit": co_inc_hit}
 
-    # ---- Aggregate ----
+
     weighted_delta = (
         skill_delta    * SKILL_WEIGHT +
         field_delta    * FIELD_WEIGHT +
@@ -312,33 +273,20 @@ def job_to_cv(
     # weighted_delta is in [-1, 1]; scale to [-MAX_SWING, +MAX_SWING] and add baseline
     raw_score = 50.0 + (weighted_delta * MAX_SWING)
     score     = int(max(0, min(100, round(raw_score))))
-
     return {"score": score, "breakdown": breakdown}
 
-
-# ---------------------------------------------------------------------------
-# Combined match score
-# Simple arithmetic mean of score 1 and score 2.
-# Presented to the user as the primary "match %" on the job card.
-# ---------------------------------------------------------------------------
 
 def match_score(s1: int, s2: int) -> int:
     return round((s1 + s2) / 2)
 
 
-# ---------------------------------------------------------------------------
 # Score 3 — LLM holistic score (async)
-#
 # Runs AFTER scores 1 & 2 are stored.  Never blocks the pipeline.
-# The LLM receives structured context so it acts as a semantic referee,
-# not a replacement for the algorithmic scores.
-#
 # Output: { "score": int 0-100, "rationale": str (one sentence) }
 #
 # TODO (CareerTwin):
 #   Pass RAG-retrieved user experience chunks as additional context so the
 #   LLM can reason about narrative fit, not just skill keywords.
-# ---------------------------------------------------------------------------
 
 LLM_SYSTEM_PROMPT = """\
 You are a senior technical recruiter scoring job-candidate fit.
@@ -390,6 +338,8 @@ ALGORITHMIC SCORES:
 Now produce the holistic score JSON.
 """
 
+
+######## TOO MANY MOVIGN PIECES, REVISIT AND REDESIGN AT SOME POINT CLEAN UP THE PROMPT AND CLEAN UP THE GROQ CLIENT AND SCAFFOLD CV_TEXT USING EXPERIENCES, PROJECTS, EDUCATION INSTEAD OF JUST RAW CV_JSON
 
 def llm_score(
     job_title:       str,
@@ -445,9 +395,7 @@ def llm_score(
         return {"score": None, "error": str(e)}
 
 
-# ---------------------------------------------------------------------------
-# Top-level entry point — called by the pipeline / endpoint
-# ---------------------------------------------------------------------------
+
 
 def score_job(
     # job row from DB
@@ -468,8 +416,7 @@ def score_job(
     include_companies: list[str],
     exclude_skills:    list[str],
     exclude_fields:    list[str],
-    exclude_locations: list[str],
-    exclude_companies: list[str],
+
     # options
     run_llm:         bool = False,
     groq_client:     Optional[Groq] = None,
@@ -501,8 +448,6 @@ def score_job(
         include_companies = include_companies,
         exclude_skills    = exclude_skills,
         exclude_fields    = exclude_fields,
-        exclude_locations = exclude_locations,
-        exclude_companies = exclude_companies,
     )
 
     s1 = s1_result["score"]
@@ -543,185 +488,129 @@ def score_job(
 
 
 
+# KEEP FOR LATER AS DEEMED FIT
+
+
+# # ==================== 3. COMPANY REPUTATION SCORE ====================
+
+# def load_company_databases():
+#     global top_1k_companies, top_2k_companies, top_10k_companies
+#     try:
+#         top_1k_companies = pd.read_csv('datasets/Top_1k.csv')['company_name'].dropna().str.lower().str.strip().tolist()
+#     except Exception:
+#         top_1k_companies = []
+#     try:
+#         top_2k_companies = pd.read_csv('datasets/Top_2k.csv')['Company'].dropna().str.lower().str.strip().tolist()
+#     except Exception:
+#         top_2k_companies = []
+#     try:
+#         top_10k_companies = pd.read_csv('datasets/Top_10k.csv')['Company_name'].dropna().str.lower().str.strip().tolist()
+#     except Exception:
+#         top_10k_companies = []
+
+# load_company_databases()
+
+# COMPANY_SUFFIXES = ['inc', 'llc', 'ltd', 'corp', 'incorporated', 'limited', '.', ',']
+
+# def score_company(company: str) -> float:
+#     c = company.lower()
+#     for s in COMPANY_SUFFIXES:
+#         c = c.replace(s, '').strip()
+#     for top in top_1k_companies:
+#         if c in top or top in c: return 8.0
+#     for top in top_2k_companies:
+#         if c in top or top in c: return 5.0
+#     for top in top_10k_companies:
+#         if c in top or top in c: return 3.0
+#     return 0.0
+
+
+# # ==================== 4. RED FLAG PENALTIES ====================
+
+# RED_FLAGS_HARD = [
+#     '3+ years', '5+ years', 'minimum 3 years', 'minimum 5 years',
+#     'at least 3 years', 'at least 5 years',
+#     '3 years of professional experience', '5 years of professional experience',
+#     'not eligible for students', 'no co-op', 'not a co-op position',
+#     'permanent residents only',
+#     'unpaid', 'no compensation', 'volunteer only', 'for credit only',
+#     'no visa sponsorship', 'no sponsorship', 'will not sponsor',
+#     'must be authorized to work in the united states',
+#     'warehouse', 'commercial driver', 'cdl required',
+# ]
+
+# RED_FLAGS_SOFT = [
+#     '7+ years', '10+ years', 'principal engineer', 'staff engineer',
+#     'commission only', 'base salary not guaranteed',
+# ]
+
+# def score_red_flags(job_desc: str) -> float:
+#     jd = job_desc.lower()
+#     penalty = 0.0
+#     for flag in RED_FLAGS_HARD:
+#         if flag in jd: penalty -= 8.0
+#     for flag in RED_FLAGS_SOFT:
+#         if flag in jd: penalty -= 3.0
+#     if len(jd.split()) < 150:
+#         penalty -= 2.0
+#     return penalty
+
+
+# # ==================== 5. SKILL MATCH SCORE ====================
+
+# CV_SKILLS_EXACT = [
+#     'python', 'javascript', 'sql', 'bash', ' c ',
+#     'react', 'react native', 'vue', 'vue.js',
+#     'fastapi', 'flask', 'celery', 'jetpack compose',
+#     'git', 'docker', 'jenkins', 'linux',
+#     'supabase', 'vercel', 'render', 'android studio',
+#     'sqlalchemy', 'postgresql', 'postgres', 'redis',
+#     'azure', 'power platform', 'kotlin',
+# ]
+
+# CV_SKILLS_ADJACENT = [
+#     'typescript', 'node.js', 'nodejs', 'express',
+#     'graphql', 'rest api', 'restful api',
+#     'kubernetes', 'aws', 'gcp', 'terraform',
+#     'pytorch', 'tensorflow', 'scikit-learn', 'pandas', 'numpy',
+#     'kafka', 'rabbitmq', 'elasticsearch',
+#     'next.js', 'nextjs', 'tailwind',
+#     'mongodb', 'mysql', 'sqlite',
+#     'github actions', 'ci/cd', 'devops',
+#     'spring boot', 'django',
+#     'websocket', 'grpc',
+#     'spark', 'airflow', 'dbt',
+#     'openai', 'langchain', 'hugging face',
+# ]
+
+# def score_skill_match(job_desc: str) -> float:
+#     jd = job_desc.lower()
+#     exact = sum(1 for s in CV_SKILLS_EXACT    if s in jd)
+#     adj   = sum(1 for s in CV_SKILLS_ADJACENT if s in jd)
+
+#     if exact == 0 and adj == 0: return -3.0
+#     if exact == 0: return min(adj * 0.5, 5.0)
+#     if exact <= 2:   score = exact * 2.0   + adj * 0.5
+#     elif exact <= 5: score = exact * 2.5   + adj * 0.75
+#     else:            score = exact * 3.0   + adj * 0.75
+
+#     return min(score, 20.0)
 
 
 
-# ==================== 3. COMPANY REPUTATION SCORE ====================
+# LOCATION_PREFERRED = [
+#     'waterloo', 'toronto', 'ottawa', 'vancouver', 'montreal', 'kitchener',
+#     'san francisco', 'new york', 'seattle', 'austin', 'boston',
+#     'berlin', 'london', 'singapore', 'amsterdam',
+# ]
 
-def load_company_databases():
-    global top_1k_companies, top_2k_companies, top_10k_companies
-    try:
-        top_1k_companies = pd.read_csv('datasets/Top_1k.csv')['company_name'].dropna().str.lower().str.strip().tolist()
-    except Exception:
-        top_1k_companies = []
-    try:
-        top_2k_companies = pd.read_csv('datasets/Top_2k.csv')['Company'].dropna().str.lower().str.strip().tolist()
-    except Exception:
-        top_2k_companies = []
-    try:
-        top_10k_companies = pd.read_csv('datasets/Top_10k.csv')['Company_name'].dropna().str.lower().str.strip().tolist()
-    except Exception:
-        top_10k_companies = []
-
-load_company_databases()
-
-COMPANY_SUFFIXES = ['inc', 'llc', 'ltd', 'corp', 'incorporated', 'limited', '.', ',']
-
-def score_company(company: str) -> float:
-    c = company.lower()
-    for s in COMPANY_SUFFIXES:
-        c = c.replace(s, '').strip()
-    for top in top_1k_companies:
-        if c in top or top in c: return 8.0
-    for top in top_2k_companies:
-        if c in top or top in c: return 5.0
-    for top in top_10k_companies:
-        if c in top or top in c: return 3.0
-    return 0.0
+# def score_location(location: str, job_desc: str = '') -> float:
+#     combined = f"{location} {job_desc}".lower()
+#     score = 0.0
+#     for kw in LOCATION_REMOTE:
+#         if kw in combined: score += 2.0; break
+#     for city in LOCATION_PREFERRED:
+#         if city in combined: score += 1.0; break
+#     return score
 
 
-# ==================== 4. RED FLAG PENALTIES ====================
-
-RED_FLAGS_HARD = [
-    '3+ years', '5+ years', 'minimum 3 years', 'minimum 5 years',
-    'at least 3 years', 'at least 5 years',
-    '3 years of professional experience', '5 years of professional experience',
-    'not eligible for students', 'no co-op', 'not a co-op position',
-    'permanent residents only',
-    'unpaid', 'no compensation', 'volunteer only', 'for credit only',
-    'no visa sponsorship', 'no sponsorship', 'will not sponsor',
-    'must be authorized to work in the united states',
-    'warehouse', 'commercial driver', 'cdl required',
-]
-
-RED_FLAGS_SOFT = [
-    '7+ years', '10+ years', 'principal engineer', 'staff engineer',
-    'commission only', 'base salary not guaranteed',
-]
-
-def score_red_flags(job_desc: str) -> float:
-    jd = job_desc.lower()
-    penalty = 0.0
-    for flag in RED_FLAGS_HARD:
-        if flag in jd: penalty -= 8.0
-    for flag in RED_FLAGS_SOFT:
-        if flag in jd: penalty -= 3.0
-    if len(jd.split()) < 150:
-        penalty -= 2.0
-    return penalty
-
-
-# ==================== 5. SKILL MATCH SCORE ====================
-
-CV_SKILLS_EXACT = [
-    'python', 'javascript', 'sql', 'bash', ' c ',
-    'react', 'react native', 'vue', 'vue.js',
-    'fastapi', 'flask', 'celery', 'jetpack compose',
-    'git', 'docker', 'jenkins', 'linux',
-    'supabase', 'vercel', 'render', 'android studio',
-    'sqlalchemy', 'postgresql', 'postgres', 'redis',
-    'azure', 'power platform', 'kotlin',
-]
-
-CV_SKILLS_ADJACENT = [
-    'typescript', 'node.js', 'nodejs', 'express',
-    'graphql', 'rest api', 'restful api',
-    'kubernetes', 'aws', 'gcp', 'terraform',
-    'pytorch', 'tensorflow', 'scikit-learn', 'pandas', 'numpy',
-    'kafka', 'rabbitmq', 'elasticsearch',
-    'next.js', 'nextjs', 'tailwind',
-    'mongodb', 'mysql', 'sqlite',
-    'github actions', 'ci/cd', 'devops',
-    'spring boot', 'django',
-    'websocket', 'grpc',
-    'spark', 'airflow', 'dbt',
-    'openai', 'langchain', 'hugging face',
-]
-
-def score_skill_match(job_desc: str) -> float:
-    jd = job_desc.lower()
-    exact = sum(1 for s in CV_SKILLS_EXACT    if s in jd)
-    adj   = sum(1 for s in CV_SKILLS_ADJACENT if s in jd)
-
-    if exact == 0 and adj == 0: return -3.0
-    if exact == 0: return min(adj * 0.5, 5.0)
-    if exact <= 2:   score = exact * 2.0   + adj * 0.5
-    elif exact <= 5: score = exact * 2.5   + adj * 0.75
-    else:            score = exact * 3.0   + adj * 0.75
-
-    return min(score, 20.0)
-
-
-
-LOCATION_PREFERRED = [
-    'waterloo', 'toronto', 'ottawa', 'vancouver', 'montreal', 'kitchener',
-    'san francisco', 'new york', 'seattle', 'austin', 'boston',
-    'berlin', 'london', 'singapore', 'amsterdam',
-]
-
-def score_location(location: str, job_desc: str = '') -> float:
-    combined = f"{location} {job_desc}".lower()
-    score = 0.0
-    for kw in LOCATION_REMOTE:
-        if kw in combined: score += 2.0; break
-    for city in LOCATION_PREFERRED:
-        if city in combined: score += 1.0; break
-    return score
-
-
-
-
-
-
-
-WEIGHTS = {
-    'title_score':          1.5,
-    'employment_score':     2.0,
-    'company_score':        0.5,
-    'skill_match_score':    1.8,
-    'role_relevance_score': 1.7,
-    'red_flag_penalty':     2.5,
-    'salary_score':         0.6,
-    'company_desc_score':   0.8,
-    'location_score':       0.3,
-    'culture_score':        0.4,
-    # 'hf_semantic_score':  0.4,
-}
-
-THRESHOLD_PRE_CL  = 10.0
-THRESHOLD_POST_CL = 60.0
-
-
-# ==================== MAIN ====================
-
-def calculate_job_score(job_data: dict) -> dict:
-    title        = job_data.get('title', '').lower()
-    tags         = job_data.get('tags', [])
-    company      = job_data.get('company', '').lower()
-    job_desc     = job_data.get('job_desc', '').lower()
-    company_desc = (job_data.get('company_desc') or 'None').lower() if job_data else ''
-    location     = job_data.get('location', '').lower()
-
-    scores = {
-        'title_score':          score_title(title),
-        'employment_score':     score_employment(title, tags, job_desc),
-        'company_score':        score_company(company),
-        'skill_match_score':    score_skill_match(job_desc),
-        'role_relevance_score': score_role_relevance(job_desc),
-        'red_flag_penalty':     score_red_flags(job_desc),
-        'salary_score':         score_salary(tags, job_desc),
-        'company_desc_score':   score_company_desc(company_desc),
-        'location_score':       score_location(location, job_desc),
-        'culture_score':        score_culture(job_desc),
-        # 'hf_semantic_score':  0,
-    }
-
-    final_score = min(
-        round(sum(scores[k] * WEIGHTS.get(k, 1.0) for k in scores), 2),
-        100.0  # global cap
-    )
-
-    return {
-        'final_score': final_score,
-        'score_breakdown': scores,
-    }
