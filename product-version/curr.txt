@@ -10,7 +10,7 @@ now mainly, we on backend;
     X. Fix up the entire scraper logic based on pseudo, review it and make it work appropriately for the dashboard logic
     X. Expand sections of the Schema particularly the dashboard_configs table with new columns (refer to creation_dashboard initially)
     X. Fix up the pseudo and then the code logic for personal_dashboard, so basically the full end to end filtering logic and endpoint based on config choices
-    1. craper → passes layer 5 → insert into jobs → push job_id to Redis queue → continue; SO RN just missing to make the REDIS queue for this with GIN query logic, check scraper.py run()
+    1. scraper → passes layer 5 → insert into jobs → push job_id to Redis queue → continue; SO RN just missing to make the REDIS queue for this with GIN query logic, check scraper.py run()
 
     we on frontend;
     X. Make the full flow UI for the creation_dashboard
@@ -21,10 +21,10 @@ now mainly, we on backend;
     back on backend;
     0. IMPORTANT: NOTE: apply_config_filters is intentionally primitive for now. TODO: Replace with score-based filtering — each matched include skill/field = +points, check the creation_dashboard file
     X. Plan out the full pseudo for the job_page and then write the full endpoint that will present all the info per job to frontend
-    1. Go modify the schemas for user_jobs to allow all the scoring details mentionned in scoring.py and also redo the llm scoring parts
-    2. Write both scoring logics being cv to job desc and job desc to cv 
-    3. Write scoring logic/prompts for llm based scoring too
-    4. Plan out the automated_elements and start writing code that launches them on all dashboard_configs efficiently
+    1. Go modify the schemas for user_jobs to allow all the scoring details mentionned in scoring.py and also redo the llm scoring parts, check comments
+    X. Write both scoring logics being cv to job desc and job desc to cv 
+    X. Write scoring logic/prompts for llm based scoring too
+    4. Plan out the automated_elements and start writing code that launches them on all dashboard_configs efficiently, BASICALLY; make the filter + score + cl + cv + llm_score pipeline
 
     back on frontend;
     1. Design job_page cleanly, nice and stacked, and the clear tools available on right side being the edit/regens for cl/cv and change status, auto_apply, etc

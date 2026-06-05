@@ -7,12 +7,36 @@
 # Score 3 LLM bridges the semantic gap in the meantime.
 
 
+from dataclasses import dataclass
 import re
 import math
 import os
 from typing import Optional
 from groq import Groq
+import json as _json
+from backend.dependencies import supabase_admin, get_current_user
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
+
+@dataclass
+class JobData:
+    job_id:          str
+    job_title:       str
+    job_description: str
+    job_skills:      list[str]
+    job_fields:      list[str]
+    job_location:    str
+    job_company:     str
+
+@dataclass
+class ScoringConfig:
+    include_skills:    list[str]
+    include_fields:    list[str]
+    include_locations: list[str]
+    include_companies: list[str]
+    exclude_skills:    list[str]
+    exclude_fields:    list[str]
 
 #### BASICALLY MOVE ALL OF THIS LOGIC IN PARTS IN THE CV PARSING END AS WELL AS IN THE SCRAPE TIME SO ALL THE NORMALIZATION OF SKILLS GOES IN THERE
 # Add entries here as new scraper quirks appear; scoring never needs changing. WE'LL ADD THESE TO THE .JSONS LATER FOR SKILLS.JSON
@@ -166,11 +190,7 @@ def _cv_to_job_empty(reason: str) -> dict:
 #             weak negative because hard-filter should have caught real misses.
 #   Location — soft additive. A preferred city is a small bonus.
 #   Company  — same as location: soft additive bonus for liked companies.
-# Scoring math:
-#   Each dimension produces a signed delta in [-1, 1] relative to what was
-#   possible in that dimension, then scaled by the dimension's weight and
-#   mapped to a contribution in points.
-#
+
 #   For skills/fields:
 #       inc_ratio = |inc_overlap| / max(|inc_list|, 1)   — how much you wanted, you got
 #       exc_ratio = |exc_overlap| / max(|exc_list|, 1)   — how much you didn't want, appeared
@@ -178,11 +198,7 @@ def _cv_to_job_empty(reason: str) -> dict:
 #
 #   For location/company (binary presence, not ratio):
 #       +SOFT_BONUS if any include match
-#
-#   Final:
-#       score = 50 + Σ(delta_i * weight_i * MAX_SWING)
-#       clamped to [0, 100]
-#
+
 # MAX_SWING is the maximum points any single dimension can move the score.
 # With weights summing to 1 and MAX_SWING=40, the theoretical range from
 # baseline is ±40 points, giving a practical range of [10, 90] for real jobs
@@ -199,30 +215,22 @@ SOFT_BONUS  = 0.6
 
 
 def job_to_cv(
-    job_skills_raw:    list[str],
-    job_fields_raw:    list[str],
-    job_location:      str,      ## should be job_locations:    list[str] TOO
-    job_company:       str,
-    include_skills:    list[str],
-    include_fields:    list[str],
-    include_locations: list[str],
-    include_companies: list[str],
-    exclude_skills:    list[str],
-    exclude_fields:    list[str],
+    job_data:       JobData,
+    scoringconfig:  ScoringConfig,
 ) -> dict:
     
-    job_skills  = normalize_skills(job_skills_raw)
-    job_fields  = {f.lower().strip() for f in (job_fields_raw  or [])}
-    loc         = (job_location or "").lower()
-    company     = (job_company  or "").lower()
+    job_skills  = normalize_skills(job_data.job_skills)
+    job_fields  = {f.lower().strip() for f in (job_data.job_fields  or [])}
+    loc         = (job_data.job_location or "").lower()
+    company     = (job_data.job_company  or "").lower()
 
-    inc_skills    = normalize_skills(include_skills)
-    inc_fields    = {f.lower().strip() for f in (include_fields    or [])}
-    inc_locs      = [l.lower().strip() for l in (include_locations or [])]
-    inc_companies = [c.lower().strip() for c in (include_companies or [])]
+    inc_skills    = normalize_skills(scoringconfig.include_skills)
+    inc_fields    = {f.lower().strip() for f in (scoringconfig.include_fields    or [])}
+    inc_locs      = [l.lower().strip() for l in (scoringconfig.include_locations or [])]
+    inc_companies = [c.lower().strip() for c in (scoringconfig.include_companies or [])]
 
-    exc_skills    = normalize_skills(exclude_skills)
-    exc_fields    = {f.lower().strip() for f in (exclude_fields    or [])}
+    exc_skills    = normalize_skills(scoringconfig.exclude_skills)
+    exc_fields    = {f.lower().strip() for f in (scoringconfig.exclude_fields    or [])}
 
     breakdown = {}
 
@@ -280,6 +288,9 @@ def match_score(s1: int, s2: int) -> int:
     return round((s1 + s2) / 2)
 
 
+
+
+
 # Score 3 — LLM holistic score (async)
 # Runs AFTER scores 1 & 2 are stored.  Never blocks the pipeline.
 # Output: { "score": int 0-100, "rationale": str (one sentence) }
@@ -308,27 +319,26 @@ Rules:
   - Penalise hard if the role level is clearly mismatched (e.g. 10 YOE required
     for an intern applicant).
   - Your score should be independent and complement the algorithmic scores.
-  - Respond ONLY with valid JSON in this exact format, no other text:
+  - Respond ONLY with valid JSON in this exact format, NO OTHER TEXT:
     {"score": <integer 0-100>, "rationale": "<one sentence max 30 words>"}
 """
 
 
 def build_llm_scoring_prompt(
-    job_title:       str,
-    job_description: str,
-    cv_text:         str,
+    job_data:           JobData,
+    candidate_context:         str,
     cv_to_job:       int,
     job_to_cv:       int,
 ) -> str:
     avg = round((cv_to_job + job_to_cv) / 2)
     return f"""\
-JOB TITLE: {job_title}
+JOB TITLE: {job_data.job_title}
 
 JOB DESCRIPTION:
-{job_description[:3000]}
+{job_data.job_description[:3000]}
 
 CANDIDATE CV:
-{cv_text[:3000]}
+{candidate_context[:5000]}
 
 ALGORITHMIC SCORES:
   cv_to_job_score : {cv_to_job}/100  (skills the candidate has vs skills the job needs)
@@ -339,30 +349,27 @@ Now produce the holistic score JSON.
 """
 
 
-######## TOO MANY MOVIGN PIECES, REVISIT AND REDESIGN AT SOME POINT CLEAN UP THE PROMPT AND CLEAN UP THE GROQ CLIENT AND SCAFFOLD CV_TEXT USING EXPERIENCES, PROJECTS, EDUCATION INSTEAD OF JUST RAW CV_JSON
+def _build_candidate_context(profile: dict) -> str:
+    parts = []
+    for key in ("experiences", "projects", "education"):
+        val = profile.get(key)
+        if val:
+            parts.append(f"=== {key.upper()} ===\n{_json.dumps(val, indent=2)}")
+    return "\n\n".join(parts) or "No candidate context available."
+
 
 def llm_score(
-    job_title:       str,
-    job_description: str,
-    cv_text:         str,
+    job_data: JobData,
+    candidate_context: str, 
     cv_to_job_score: int,
     job_to_cv_score: int,
     groq_client:     Optional[Groq] = None,
 ) -> dict:
-    """
-    Calls Groq (llama-3.3-70b-versatile) for a holistic LLM score.
-    Returns {"score": int, "rationale": str} or {"score": None, "error": str}.
-
-    Pass groq_client explicitly for testability; if None, instantiates from env.
-    """
-    import json as _json
-
     client = groq_client or Groq(api_key=os.environ["GROQ_API_KEY"])
 
     prompt = build_llm_scoring_prompt(
-        job_title       = job_title,
-        job_description = job_description,
-        cv_text         = cv_text,
+        job_data            = job_data,
+        candidate_context         = candidate_context, 
         cv_to_job       = cv_to_job_score,
         job_to_cv       = job_to_cv_score,
     )
@@ -370,7 +377,7 @@ def llm_score(
     try:
         response = client.chat.completions.create(
             model       = "llama-3.3-70b-versatile",
-            temperature = 0.2,    # low temp — we want consistent scoring not creativity
+            temperature = 0.2,  
             max_tokens  = 120,
             messages    = [
                 {"role": "system", "content": LLM_SYSTEM_PROMPT},
@@ -378,8 +385,6 @@ def llm_score(
             ],
         )
         raw = response.choices[0].message.content.strip()
-
-        # Strip any accidental markdown fences
         raw = re.sub(r"```[a-z]*", "", raw).replace("```", "").strip()
         parsed = _json.loads(raw)
 
@@ -396,87 +401,157 @@ def llm_score(
 
 
 
-
 def score_job(
-    # job row from DB
-    job_id:          str,
-    job_title:       str,
-    job_description: str,
-    job_skills:      list[str],
-    job_fields:      list[str],
-    job_location:    str,
-    job_company:     str,
-    # profile row
-    user_skills:     list[str],
-    cv_text:         str,
-    # dashboard_config row
-    include_skills:    list[str],
-    include_fields:    list[str],
-    include_locations: list[str],
-    include_companies: list[str],
-    exclude_skills:    list[str],
-    exclude_fields:    list[str],
-
-    # options
-    run_llm:         bool = False,
-    groq_client:     Optional[Groq] = None,
+    job_id:            str,
+    user_id:           str,
+    scoring_config_id: str,
+    run_s1s2:          bool = False,
+    run_llm:           bool = False,
+    groq_client:       Optional[Groq] = None,
 ) -> dict:
-    """
-    Returns the full scoring payload ready to upsert into user_jobs.
 
-    {
-        "job_id":          str,
-        "cv_to_job_score": int,
-        "job_to_cv_score": int,
-        "match_score":     int,   # avg of above two, shown to user
-        "cv_to_job_detail": dict,
-        "job_to_cv_detail": dict,
-        "llm_score":        int | None,
-        "llm_rationale":    str | None,
-    }
-    """
+    result = {"job_id": job_id}
 
-    s1_result = cv_to_job(job_skills, user_skills)
-    s2_result = job_to_cv(
-        job_skills_raw    = job_skills,
-        job_fields_raw    = job_fields,
-        job_location      = job_location,
-        job_company       = job_company,
-        include_skills    = include_skills,
-        include_fields    = include_fields,
-        include_locations = include_locations,
-        include_companies = include_companies,
-        exclude_skills    = exclude_skills,
-        exclude_fields    = exclude_fields,
+    if not run_s1s2 and not run_llm:
+        return result
+    
+
+    job_row = (
+        supabase_admin
+        .table("jobs")
+        .select("*")
+        .eq("id", job_id)
+        .single()
+        .execute()
+        .data
     )
 
-    s1 = s1_result["score"]
-    s2 = s2_result["score"]
-    avg = match_score(s1, s2)
+    job_data = JobData(
+        job_id          = job_id,
+        job_title       = job_row["title"],
+        job_description = job_row.get("description", ""),
+        job_skills      = job_row.get("skills") or [],
+        job_fields      = job_row.get("fields") or [],
+        job_location    = job_row.get("location", ""),
+        job_company     = job_row.get("company", ""),
+    )
+    s1, s2 = None, None
+
+    profile_row = (
+        supabase_admin
+        .table("profiles")
+        .select("skills, experiences, projects, education")
+        .eq("user_id", user_id)
+        .single()
+        .execute()
+        .data
+    )
+    
+    if run_s1s2:
+        config_row = (
+            supabase_admin
+            .table("dashboard_configs")
+            .select("include_skills, include_fields, include_locations, include_companies, exclude_skills, exclude_fields")
+            .eq("id", scoring_config_id)
+            .single()
+            .execute()
+            .data
+        )
+        scoring_config = ScoringConfig(
+            include_skills    = config_row.get("include_skills")    or [],
+            include_fields    = config_row.get("include_fields")    or [],
+            include_locations = config_row.get("include_locations") or [],
+            include_companies = config_row.get("include_companies") or [],
+            exclude_skills    = config_row.get("exclude_skills")    or [],
+            exclude_fields    = config_row.get("exclude_fields")    or [],
+        )
+
+        s1_result = cv_to_job(job_data.job_skills, profile_row.get("skills") or [])
+        s2_result = job_to_cv(job_data, scoring_config)
+        s1 = s1_result["score"]
+        s2 = s2_result["score"]
+
+        result.update({
+            "cv_to_job_score":  s1,
+            "job_to_cv_score":  s2,
+            "match_score":      match_score(s1, s2),
+            "cv_to_job_detail": s1_result,
+            "job_to_cv_detail": s2_result,
+        })
+
 
     llm_result = {"score": None, "rationale": None}
     if run_llm:
+        if s1 is None or s2 is None:
+            uj = (
+                supabase_admin.table("user_jobs")
+                .select("cv_to_job_score, job_to_cv_score")
+                .eq("job_id", job_id).eq("user_id", user_id)
+                .single().execute().data
+            )
+            s1, s2 = uj["cv_to_job_score"], uj["job_to_cv_score"]
+            
+        candidate_context = _build_candidate_context(profile_row)
         raw = llm_score(
-            job_title        = job_title,
-            job_description  = job_description,
-            cv_text          = cv_text,
-            cv_to_job_score  = s1,
-            job_to_cv_score  = s2,
-            groq_client      = groq_client,
+            job_data          = job_data,
+            candidate_context = candidate_context,
+            cv_to_job_score   = s1,
+            job_to_cv_score   = s2,
+            groq_client       = groq_client,
         )
-        llm_result["score"]     = raw.get("score")
-        llm_result["rationale"] = raw.get("rationale") or raw.get("error")
+        result.update({
+            "llm_score":     raw.get("score"),
+            "llm_rationale": raw.get("rationale") or raw.get("error"),
+        })
+        
+    return result
 
-    return {
-        "job_id":           job_id,
-        "cv_to_job_score":  s1,
-        "job_to_cv_score":  s2,
-        "match_score":      avg,
-        "cv_to_job_detail": s1_result,
-        "job_to_cv_detail": s2_result,
-        "llm_score":        llm_result["score"],
-        "llm_rationale":    llm_result["rationale"],
-    }
+
+##############
+router = APIRouter()
+
+class ScoringSettings(BaseModel):
+    run_s1s2: bool = False
+    run_llm:  bool = False
+
+@router.post("/scoring/")
+def run_scoring(
+    job_id:             str,
+    scoring_config_id:  str,   ## just dashboard_config_id
+    scoring_settings:   ScoringSettings,
+    current_user:            str = Depends(get_current_user),
+):
+    if not scoring_settings.run_s1s2 and not scoring_settings.run_llm:
+        raise HTTPException(status_code=400, detail="at least one of run_s1s2 or run_llm must be true")
+
+    result = score_job(
+        job_id            = job_id,
+        user_id           = current_user["user_id"],
+        scoring_config_id = scoring_config_id,
+        run_s1s2          = scoring_settings.run_s1s2,
+        run_llm           = scoring_settings.run_llm,
+    )
+
+    # build update payload from whatever score_job returned
+    update_payload = {k: v for k, v in result.items() if k != "job_id"}
+
+    updated = (
+        supabase_admin
+        .table("user_jobs")
+        .update(update_payload)
+        .eq("job_id", job_id)
+        .eq("user_id", current_user["user_id"])
+        .execute()
+    )
+
+    if not updated.data:
+        raise HTTPException(status_code=404, detail="user_job not found: make sure the row exists before scoring")
+
+    return {"status": "ok", "updated": update_payload}
+
+
+
+
 
 
 

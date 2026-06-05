@@ -150,7 +150,11 @@ CREATE TABLE user_jobs (
     -- Scoring
     cv_to_job_score INTEGER,       -- How well CV matches job (0-100)
     job_to_cv_score INTEGER,       -- How well job matches user profile (0-100)
+    match_score     INTEGER,
+    cv_to_job_detail JSONB,
+    job_to_cv_detail JSONB,
     llm_score INTEGER,             -- Overall LLM-computed relevance score (0-100)
+    llm_rationale TEXT,
     
     -- Application tracking
     status TEXT DEFAULT 'new',     -- 'new', 'saved', 'applied', 'rejected', 'ignored', 'interview'
