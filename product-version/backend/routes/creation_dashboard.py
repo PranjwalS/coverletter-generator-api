@@ -305,6 +305,134 @@ async def launch_dashboard_config(config_id: UUID, current_user: dict = Depends(
 ## Ties into the scoring system (cv-to-job, job-to-cv, LLM scoring) planned later in roadmap.
 ## min_score_threshold from dashboard_configs should drive filtering, not binary overlaps.
 ## Also: jobs.duration needs to become a JSON {duration, start, end} before date_range filter is useful.
+
+##new filter -> combine with old one and refine logic, and account for work_duration aspects and normalize param types to work properly with the endpoints below
+from datetime import datetime
+
+def apply_config_filters(job: dict, config: dict) -> bool:
+    """
+    Pure-python per-job × per-config filter.
+    Returns True if the job should appear in this user's dashboard, False otherwise.
+
+    Hard kills:  instant False, no math.
+    Soft signal: geometric-mean normalized include signal minus weighted exclude penalty.
+                 Pass if total > 0 OR if user set no includes at all (exclude-only mode).
+    """
+
+
+    job_types = config.get("job_types") or []
+    if job_types and job.get("job_type") not in job_types:
+        return False
+
+    seasons = config.get("seasons") or []
+    if seasons and job.get("season") not in seasons:
+        return False
+
+    # work_term_duration; only filter if config specifies it
+    cfg_duration = config.get("work_term_duration")
+    if cfg_duration and job.get("duration") and cfg_duration.lower() != job["duration"].lower():
+        return False
+
+    date_range = config.get("date_range") or {}
+    if date_range:
+        scraped_raw = job.get("scraped_at")
+        if scraped_raw:
+            try:
+                scraped_dt = datetime.fromisoformat(scraped_raw.replace("Z", "+00:00"))
+                if date_range.get("start"):
+                    start_dt = datetime.fromisoformat(date_range["start"])
+                    if scraped_dt < start_dt:
+                        return False
+                if date_range.get("end"):
+                    end_dt = datetime.fromisoformat(date_range["end"])
+                    if scraped_dt > end_dt:
+                        return False
+            except (ValueError, TypeError):
+                pass
+
+    exc_companies = {c.lower().strip() for c in (config.get("exclude_companies") or [])}
+    job_company   = (job.get("company") or "").lower().strip()
+    if exc_companies and any(c in job_company for c in exc_companies):
+        return False
+
+    inc_companies = [c.lower().strip() for c in (config.get("include_companies") or [])]
+    if config.get("company_mode") == "hard" and inc_companies:
+        if not any(c in job_company for c in inc_companies):
+            return False
+
+    inc_locations = [l.lower().strip() for l in (config.get("include_locations") or [])]
+    exc_locations = [l.lower().strip() for l in (config.get("exclude_locations") or [])]
+    job_locations = [l.lower().strip() for l in (job.get("locations") or [job.get("location", "")])]
+    job_loc_str   = " ".join(job_locations)
+
+    if config.get("location_mode") == "hard" and inc_locations:
+        if not any(l in job_loc_str for l in inc_locations):
+            return False
+
+    if exc_locations and any(l in job_loc_str for l in exc_locations):
+        return False
+
+
+    job_skills = {s.lower().strip() for s in (job.get("skills") or [])}
+    inc_skills  = {s.lower().strip() for s in (config.get("include_skills") or [])}
+    exc_skills  = {s.lower().strip() for s in (config.get("exclude_skills") or [])}
+
+    skill_inc_signal = 0.0
+    skill_exc_penalty = 0.0
+
+    if inc_skills and job_skills:
+        matched_inc  = len(job_skills & inc_skills)
+        skill_inc_signal = matched_inc / (len(job_skills) * len(inc_skills)) ** 0.5
+
+    if exc_skills and job_skills:
+        matched_exc      = len(job_skills & exc_skills)
+        skill_exc_penalty = matched_exc / max(len(job_skills), 1)
+
+    skill_net = skill_inc_signal - (skill_exc_penalty * 1.5)
+
+
+    job_fields = {f.lower().strip() for f in (job.get("fields") or [])}
+    inc_fields  = {f.lower().strip() for f in (config.get("include_fields") or [])}
+    exc_fields  = {f.lower().strip() for f in (config.get("exclude_fields") or [])}
+
+    field_inc_signal  = 0.0
+    field_exc_penalty = 0.0
+
+    if inc_fields and job_fields:
+        matched_inc       = len(job_fields & inc_fields)
+        field_inc_signal  = matched_inc / (len(job_fields) * len(inc_fields)) ** 0.5
+
+    if exc_fields and job_fields:
+        matched_exc        = len(job_fields & exc_fields)
+        field_exc_penalty  = matched_exc / max(len(job_fields), 1)
+
+    field_net = field_inc_signal - (field_exc_penalty * 1.2)
+
+    loc_net = 0.0
+    if config.get("location_mode") == "preference":
+        if inc_locations and any(l in job_loc_str for l in inc_locations):
+            loc_net += 0.15
+
+    co_net = 0.0
+    if config.get("company_mode") == "preference" and inc_companies:
+        if any(c in job_company for c in inc_companies):
+            co_net += 0.10
+
+    total = (
+        skill_net * 0.55 +
+        field_net * 0.30 +
+        loc_net   * 0.10 +
+        co_net    * 0.05
+    )
+
+    # if user set no includes at all → exclude-only mode, pass if we got here
+    user_has_includes = bool(inc_skills or inc_fields)
+    if not user_has_includes:
+        return True
+
+    return total > 0.0
+
+## old filter
 def apply_config_filters(query, config: dict):
     if config.get("job_types"):
         query = query.in_("job_type", config["job_types"])
