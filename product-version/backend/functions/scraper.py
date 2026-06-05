@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from difflib import SequenceMatcher
 import json, pathlib
-
+from backend.routes.creation_dashboard import apply_config_filters
 import requests
 from bs4 import BeautifulSoup
 from supabase import create_client
@@ -37,15 +37,14 @@ BASE_DEPTH      = 250
 MAX_DEPTH       = 5000
 
 
-#-------------------------------------------------------------#
+
+##helpers;
+
 def desc_similarity(a: str, b: str) -> float:
     if not a or not b:
         return 0.0
     return SequenceMatcher(None, a[:2000], b[:2000]).ratio()
 
-
-
-#-------------------------------------------------------------#
 ### Fetch all data from table, and create sets and search_matrix
 def fetch_all_dashboard_configs() -> list[dict]:
     resp = supabase.table("dashboard_configs").select(
@@ -148,6 +147,18 @@ def _build_global_sets_skills_n_fields() -> tuple[set[str], set[str]]:
 
 GLOBAL_FIELDS, GLOBAL_SKILLS = _build_global_sets_skills_n_fields()
     
+def match_jobs_to_configs(batch: list[dict], configs: list[dict]) -> list[dict]:
+    user_jobs_insert_batch = []
+    for job in batch:
+        for config in configs:
+            if apply_config_filters(job, config):
+                user_jobs_insert_batch.append({
+                    "user_id":             config["user_id"],
+                    "dashboard_config_id": config["id"],
+                    "job_id":              job["id"],  
+                    "status":              "new",
+                })
+    return user_jobs_insert_batch
     
     
 ### layers 1-5;
@@ -576,11 +587,15 @@ def run():
             inserted      = layer5_insert_jobs(batch)
             total_inserted += inserted
             print(f"[layer5] inserted {inserted} jobs | total={total_inserted}")
-            batch.clear()         
-            #  TODO: scraper → passes layer 5 → insert into jobs → push job_id to Redis queue → continue
-            #  TODO: separate Celery worker (always running) → pulls from Redis queue → GIN query → batch insert user_jobs
-            #                                                                 -> GIN query checks every passing job, across all dashboard_configs available.
-
+            user_jobs_batch = match_jobs_to_configs(batch, configs)
+            if user_jobs_batch:
+                for i in range(0, len(user_jobs_batch), 1000):
+                    supabase.table("user_jobs").upsert(
+                        user_jobs_batch[i:i+1000],
+                        on_conflict="user_id,job_id,dashboard_config_id"
+                    ).execute()
+                print(f"[user_jobs] upserted {len(user_jobs_batch)} rows")
+            batch.clear()
 
             start += 10
 

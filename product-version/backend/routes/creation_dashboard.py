@@ -350,7 +350,7 @@ def apply_config_filters(query, config: dict):
     return query
 
 
-# user can manually trigger it too (or you call it on dashboard open if last sync was >X hours ago).
+# user can manually trigger (MAIN USE CASE NOW IS MANUAL TRIGGER SINCE SCRAPER AUTO ADDS JOBS TO USER_JOBS) it too (or you call it on dashboard open if last sync was >X hours ago).
 @router.post("/dashboard-configs/{config_id}/sync")
 async def sync_jobs_for_config(
     config_id: UUID,
