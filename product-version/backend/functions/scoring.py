@@ -541,6 +541,7 @@ def run_scoring(
         .update(update_payload)
         .eq("job_id", job_id)
         .eq("user_id", current_user["user_id"])
+        .eq("dashboard_config_id", scoring_config_id)
         .execute()
     )
 

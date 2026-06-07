@@ -297,10 +297,6 @@ async def launch_dashboard_config(config_id: UUID, current_user: dict = Depends(
 
 # ─── Jobs Feed ────────────────────────────────────────────────────────────────
 
-## TODO: Replace with score-based filtering — each matched include skill/field = +points,
-## Also: jobs.duration needs to become a JSON {duration, start, end} before date_range filter is useful.
-
-##new filter -> combine with old one and refine logic, and account for work_duration aspects and normalize param types to work properly with the endpoints below
 def apply_config_filters(job: dict, config: dict) -> bool:
     job_types = config.get("job_types") or []
     if job_types and job.get("job_type") not in job_types:
@@ -369,9 +365,9 @@ def apply_config_filters(job: dict, config: dict) -> bool:
 
     if exc_skills and job_skills:
         matched_exc      = len(job_skills & exc_skills)
-        skill_exc_penalty = matched_exc / max(len(job_skills), 1)
+        skill_exc_penalty = matched_exc / (len(job_skills) * len(exc_skills)) ** 0.5
 
-    skill_net = skill_inc_signal - (skill_exc_penalty * 1.5)
+    skill_net = skill_inc_signal - (skill_exc_penalty)
 
 
     job_fields = {f.lower().strip() for f in (job.get("fields") or [])}
@@ -387,31 +383,19 @@ def apply_config_filters(job: dict, config: dict) -> bool:
 
     if exc_fields and job_fields:
         matched_exc        = len(job_fields & exc_fields)
-        field_exc_penalty  = matched_exc / max(len(job_fields), 1)
+        field_exc_penalty = matched_exc / (len(job_fields) * len(exc_fields)) ** 0.5
 
     field_net = field_inc_signal - (field_exc_penalty * 1.2)
 
-    loc_net = 0.0
-    if config.get("location_mode") == "preference":
-        if inc_locations and any(l in job_loc_str for l in inc_locations):
-            loc_net += 0.15
-
-    co_net = 0.0
-    if config.get("company_mode") == "preference" and inc_companies:
-        if any(c in job_company for c in inc_companies):
-            co_net += 0.10
-
     total = (
-        skill_net * 0.55 +
-        field_net * 0.30 +
-        loc_net   * 0.10 +
-        co_net    * 0.05
+        skill_net * 0.65 +
+        field_net * 0.35 
     )
 
-    # if user set no includes at all → exclude-only mode, pass if we got here
+    # if user set no includes at all -> exclude-only mode, >= 0
     user_has_includes = bool(inc_skills or inc_fields)
     if not user_has_includes:
-        return True
+        return total >= 0.0
 
     return total > 0.0
 
