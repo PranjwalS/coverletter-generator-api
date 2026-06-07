@@ -69,7 +69,7 @@ CREATE TABLE dashboard_configs (
 
     -- Seasons + work term
     seasons JSONB DEFAULT '["fall_2026"]',
-    work_term_duration TEXT,
+    work_term_duration TEXT, -- refers to ; "4 months" or "8 months", etc
 
     -- Date range
     date_range JSONB,  -- { "start": "2026-09-01", "end": "2026-12-31" }
@@ -110,7 +110,7 @@ CREATE TABLE jobs (
     skills          TEXT[],
     requirements    JSONB,
     salary          JSONB,
-    duration        TEXT,
+    duration        JSONB,    --  {duration, start, end} ; duration is "4 months", "16 months", etc
     scraped_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     job_type        TEXT,

@@ -298,23 +298,10 @@ async def launch_dashboard_config(config_id: UUID, current_user: dict = Depends(
 # ─── Jobs Feed ────────────────────────────────────────────────────────────────
 
 ## TODO: Replace with score-based filtering — each matched include skill/field = +points,
-## exclude appearing in title = hard kill, exclude in desc only = penalty.
-## Ties into the scoring system (cv-to-job, job-to-cv, LLM scoring) planned later in roadmap.
-## min_score_threshold from dashboard_configs should drive filtering, not binary overlaps.
 ## Also: jobs.duration needs to become a JSON {duration, start, end} before date_range filter is useful.
 
 ##new filter -> combine with old one and refine logic, and account for work_duration aspects and normalize param types to work properly with the endpoints below
 def apply_config_filters(job: dict, config: dict) -> bool:
-    """
-    Pure-python per-job × per-config filter.
-    Returns True if the job should appear in this user's dashboard, False otherwise.
-
-    Hard kills:  instant False, no math.
-    Soft signal: geometric-mean normalized include signal minus weighted exclude penalty.
-                 Pass if total > 0 OR if user set no includes at all (exclude-only mode).
-    """
-
-
     job_types = config.get("job_types") or []
     if job_types and job.get("job_type") not in job_types:
         return False
@@ -323,27 +310,28 @@ def apply_config_filters(job: dict, config: dict) -> bool:
     if seasons and job.get("season") not in seasons:
         return False
 
-    # work_term_duration; only filter if config specifies it
+    # work_term_duration; only filter if config specifies it  KINDA UNECESSARY
     cfg_duration = config.get("work_term_duration")
-    if cfg_duration and job.get("duration") and cfg_duration.lower() != job["duration"].lower():
-        return False
-
+    job_duration = job.get("duration") or {}
+    if cfg_duration and job_duration.get("duration"):
+        if cfg_duration.lower() != job_duration["duration"].lower():
+            return False
+        
     date_range = config.get("date_range") or {}
     if date_range:
-        scraped_raw = job.get("scraped_at")
-        if scraped_raw:
+        cfg_start = date_range.get("start")
+        cfg_end   = date_range.get("end")
+        job_start_raw = job_duration.get("start")
+        if job_start_raw:
             try:
-                scraped_dt = datetime.fromisoformat(scraped_raw.replace("Z", "+00:00"))
-                if date_range.get("start"):
-                    start_dt = datetime.fromisoformat(date_range["start"])
-                    if scraped_dt < start_dt:
-                        return False
-                if date_range.get("end"):
-                    end_dt = datetime.fromisoformat(date_range["end"])
-                    if scraped_dt > end_dt:
-                        return False
+                job_start_dt = datetime.fromisoformat(job_start_raw)
+                if cfg_start and job_start_dt < datetime.fromisoformat(cfg_start):
+                    return False
+                if cfg_end and job_start_dt > datetime.fromisoformat(cfg_end):
+                    return False
             except (ValueError, TypeError):
                 pass
+        else:
 
     exc_companies = {c.lower().strip() for c in (config.get("exclude_companies") or [])}
     job_company   = (job.get("company") or "").lower().strip()
