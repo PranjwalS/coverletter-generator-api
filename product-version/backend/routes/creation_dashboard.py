@@ -331,7 +331,7 @@ def apply_config_filters(job: dict, config: dict) -> bool:
                     return False
             except (ValueError, TypeError):
                 pass
-        else:
+
 
     exc_companies = {c.lower().strip() for c in (config.get("exclude_companies") or [])}
     job_company   = (job.get("company") or "").lower().strip()
