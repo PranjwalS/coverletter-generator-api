@@ -297,9 +297,6 @@ async def launch_dashboard_config(config_id: UUID, current_user: dict = Depends(
 
 # ─── Jobs Feed ────────────────────────────────────────────────────────────────
 
-## NOTE: apply_config_filters is intentionally primitive for now.
-## This is per-user filtering that runs downstream after jobs are in the jobs table.
-## Current binary overlap logic (has field / doesn't) is too harsh and needs rework.
 ## TODO: Replace with score-based filtering — each matched include skill/field = +points,
 ## exclude appearing in title = hard kill, exclude in desc only = penalty.
 ## Ties into the scoring system (cv-to-job, job-to-cv, LLM scoring) planned later in roadmap.
@@ -307,8 +304,6 @@ async def launch_dashboard_config(config_id: UUID, current_user: dict = Depends(
 ## Also: jobs.duration needs to become a JSON {duration, start, end} before date_range filter is useful.
 
 ##new filter -> combine with old one and refine logic, and account for work_duration aspects and normalize param types to work properly with the endpoints below
-from datetime import datetime
-
 def apply_config_filters(job: dict, config: dict) -> bool:
     """
     Pure-python per-job × per-config filter.
@@ -432,50 +427,6 @@ def apply_config_filters(job: dict, config: dict) -> bool:
 
     return total > 0.0
 
-## old filter
-def apply_config_filters(query, config: dict):
-    if config.get("job_types"):
-        query = query.in_("job_type", config["job_types"])
-
-    if config.get("seasons"):
-        query = query.in_("season", config["seasons"])
-
-    if config.get("include_fields"):
-        query = query.overlaps("fields", config["include_fields"])
-
-    if config.get("exclude_fields"):
-        for field in config["exclude_fields"]:
-            query = query.not_.contains("fields", [field])
-
-    if config.get("include_skills"):
-        query = query.overlaps("skills", config["include_skills"])
-
-    if config.get("exclude_skills"):
-        for skill in config["exclude_skills"]:
-            query = query.not_.contains("skills", [skill])
-
-    if config.get("location_mode") == "hard" and config.get("include_locations"):
-        query = query.overlaps("locations", config["include_locations"])
-
-    if config.get("exclude_locations"):
-        for loc in config["exclude_locations"]:
-            query = query.not_.contains("locations", [loc])
-
-    if config.get("exclude_companies"):
-        query = query.not_.in_("company", config["exclude_companies"])
-
-    if config.get("company_mode") == "hard" and config.get("include_companies"):
-        query = query.in_("company", config["include_companies"])
-
-## we'll have to mod this, perhaps trn jobs.duration into a json that holds stuff like; {duration: ..., start: ..., end: ...} instead
-    date_range = config.get("date_range")
-    if date_range:
-        if date_range.get("start"):
-            query = query.gte("scraped_at", date_range["start"])
-        if date_range.get("end"):
-            query = query.lte("scraped_at", date_range["end"])
-
-    return query
 
 
 # user can manually trigger (MAIN USE CASE NOW IS MANUAL TRIGGER SINCE SCRAPER AUTO ADDS JOBS TO USER_JOBS) it too (or you call it on dashboard open if last sync was >X hours ago).
@@ -501,13 +452,16 @@ async def sync_jobs_for_config(
     config = config_res.data
     last_synced = config.get("last_synced_at")
 
-    jobs_query = supabase_admin.table("jobs").select("id")
+    jobs_query = supabase_admin.table("jobs").select("*")
     if last_synced:
         jobs_query = jobs_query.gt("scraped_at", last_synced)
-    jobs_query = apply_config_filters(jobs_query, config)
-    jobs_res = jobs_query.execute()
 
-    if not jobs_res.data:
+    jobs_res = jobs_query.execute()
+    all_jobs = jobs_res.data or []
+
+    filtered_jobs = [job for job in all_jobs if apply_config_filters(job, config)]
+
+    if not filtered_jobs:
         return {"synced": 0}
 
     rows = [
@@ -517,7 +471,7 @@ async def sync_jobs_for_config(
             "job_id": job["id"],
             "status": "new",
         }
-        for job in jobs_res.data
+        for job in filtered_jobs
     ]
 
     res = (
