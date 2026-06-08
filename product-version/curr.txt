@@ -10,7 +10,7 @@ now mainly, we on backend;
     X. Fix up the entire scraper logic based on pseudo, review it and make it work appropriately for the dashboard logic
     X. Expand sections of the Schema particularly the dashboard_configs table with new columns (refer to creation_dashboard initially)
     X. Fix up the pseudo and then the code logic for personal_dashboard, so basically the full end to end filtering logic and endpoint based on config choices
-    1. scraper → passes layer 5 → insert into jobs → push job_id to Redis queue → continue; SO RN just missing to make the REDIS queue for this with GIN query logic, check scraper.py run()
+    X. scraper → passes layer 5 → insert into jobs → push job_id in a batch to the filtering process directly and hence updating the user_jobs, check scraper.py run()
 
     we on frontend;
     X. Make the full flow UI for the creation_dashboard
@@ -19,19 +19,19 @@ now mainly, we on backend;
             also ensure their is proper filtering, and searching logic setup, as well as quick bulk edits/deletion possibilities, and finally also analytics for every grids
     
     back on backend;
-    0. IMPORTANT: NOTE: apply_config_filters is intentionally primitive for now. TODO: Replace with score-based filtering — each matched include skill/field = +points, check the creation_dashboard file
+    X. IMPORTANT: NOTE: apply_config_filters is intentionally primitive for now. TODO: Replace with score-based filtering — each matched include skill/field = +points, check the creation_dashboard file
     X. Plan out the full pseudo for the job_page and then write the full endpoint that will present all the info per job to frontend
     X. Go modify the schemas for user_jobs to allow all the scoring details mentionned in scoring.py and also redo the llm scoring parts, check comments
     X. Write both scoring logics being cv to job desc and job desc to cv 
     X. Write scoring logic/prompts for llm based scoring too
-    4. Plan out the automated_elements and start writing code that launches them on all dashboard_configs efficiently, BASICALLY; make the filter + score + cl + cv + llm_score pipeline
+    2. Plan out the automated_elements and start writing code that launches them on all dashboard_configs efficiently, BASICALLY; make the filter + score + cl + cv + llm_score pipeline
+    1. Go write all the backend logic for CV generation, custom from careertwin per job, clearly define the regenerate endpoints (split new_job for coverletter into two proper endpoints), and then frontend for mods
 
     back on frontend;
     1. Design job_page cleanly, nice and stacked, and the clear tools available on right side being the edit/regens for cl/cv and change status, auto_apply, etc
 
     finally;
     now that all major logic is setup;
-    1. Go write all the backend logic for CV generation, custom from careertwin per job, and then frontend for mods
     2. Go write the backend logic for an auto form filling extension to save manual input times mainly with the ability to fetch the last two donwloads (coverletter, cv) and has access to user profile info and config info entirely and smartly fills all possible fields as much as possible
     3. Write the frontend ui look for said extension - use react now instead of some html stuff - call it like Application Copilot
     4. Refine the extension with AI custom answers to custom questions per job application forms, user can highlight and ask ai assistant to help answer questions -> basically add a chatbot to the extension
