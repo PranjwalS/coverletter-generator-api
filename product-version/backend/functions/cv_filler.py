@@ -432,7 +432,7 @@ if __name__ == "__main__":
 
     selected = cv_selector(job, user_profile)
     stamped = stamp_cv_ids(selected)
-    filled  = fill_template(stamped, sample_profile, template_name="cv_temp1")
+    filled  = fill_template(stamped, sample_profile, template_name="cv_temp2")
 
     out = pathlib.Path(__file__).parent / "cv_filled_test.tex"
     out.write_text(filled, encoding="utf-8")

@@ -1,0 +1,129 @@
+\documentclass[10pt]{article}
+\usepackage[left=0in,top=0in,right=0.4in,bottom=0in,noheadfoot]{geometry}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{atbegshi}
+
+\renewcommand{\familydefault}{\rmdefault}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+
+\hypersetup{colorlinks=true,linkcolor=black,urlcolor=black}
+
+\definecolor{sidebarcolor}{RGB}{240,240,240}
+\definecolor{linecolor}{RGB}{80,80,80}
+
+%% draws the full-height sidebar background on every page
+\AddToShipoutPictureBG{
+  \begin{tikzpicture}[remember picture, overlay]
+    \fill[sidebarcolor] (current page.north west) rectangle
+      ([xshift=0.32\paperwidth] current page.south west);
+  \end{tikzpicture}
+}
+
+\newcommand{\cvsection}[1]{
+  \vspace{6pt}
+  {\large\bf #1}
+  \vspace{2pt}
+  \hrule
+  \vspace{5pt}
+}
+
+\newcommand{\tagged}[2]{\hypertarget{#1}{#2}}
+
+\begin{document}
+
+%% full-width name bar
+\noindent
+\begin{tikzpicture}[remember picture, overlay]
+  \fill[linecolor] (current page.north west)
+    rectangle ([yshift=-1.1cm] current page.north east);
+\end{tikzpicture}
+\vspace{-0.5cm}
+\begin{center}
+  {\LARGE\bf\color{white} \tagged{contact_name}{Pranjwal S.}}
+\end{center}
+\vspace{0.4cm}
+
+%% two columns via minipage — left 30%, right 70%
+\noindent
+\begin{minipage}[t]{0.28\textwidth}
+\vspace{0pt}
+\hspace{6pt}
+\begin{minipage}[t]{\dimexpr\textwidth-6pt}
+
+\cvsection{Contact}
+{\fontsize{8.5}{12}\selectfont
+\tagged{contact_phone}{438-773-4010} \\[2pt]
+\underline{\href{mailto:singhpranjwal@gmail.com}{\tagged{contact_email}{singhpranjwal@gmail.com}}} \\[2pt]
+\underline{\href{https://www.linkedin.com/in/pranjwal-s-01979b242/}{\tagged{contact_linkedin}{www.linkedin.com/in/pranjwal-s-01979b242}}} \\[2pt]
+\underline{\href{https://github.com/PranjwalS}{\tagged{contact_github}{github.com/PranjwalS}}} \\[2pt]
+\underline{\href{https://pranjwal-singh.vercel.app}{\tagged{contact_portfolio}{pranjwal-singh.vercel.app}}}
+}
+
+\cvsection{Education}
+
+{\fontsize{9.5}{13}\bf \tagged{66c6d9e1_school}{University of Waterloo}} \\[2pt]
+{\fontsize{8.5}{11}\selectfont \tagged{66c6d9e1_degree}{Bachelor of Computer Science Honours}} \\[2pt]
+{\fontsize{8}{10}\selectfont \tagged{66c6d9e1_field}{Digital Hardware Specialization}} \\[2pt]
+{\fontsize{8}{10}\selectfont \tagged{66c6d9e1_location}{}} \\[2pt]
+{\fontsize{8}{10}\selectfont \tagged{66c6d9e1_date}{}}
+\vspace{6pt}
+
+
+\cvsection{Skills}
+{\fontsize{8}{12}\selectfont
+
+{\bf \tagged{skill_0_label}{Skills}} \\[1pt]
+\tagged{skill_0_value}{Python, TypeScript, C, C++, SQL, Bash, React, LangChain, React Native, Vue.js, FastAPI, Flask, Celery, Jetpack Compose, Git, GitHub, Docker, Jenkins, Linux, Supabase, Vercel, Render, Android Studio, Unity, Azure (DevOps, Blob, App Service), Power Platform, SQLAlchemy, PostgreSQL}
+\vspace{5pt}
+
+}
+
+\end{minipage}
+\end{minipage}%
+\hspace{4pt}%
+\textcolor{linecolor}{\vrule width 0.4pt height \textheight}%
+\hspace{8pt}%
+\begin{minipage}[t]{0.65\textwidth}
+\vspace{0pt}
+
+\cvsection{Experience}
+
+{\fontsize{10}{13}\bf \tagged{8efb0172_company}{Cadets, IT Development Team, Dept. of National Defence}} \hfill {\fontsize{8.5}{11}\selectfont \tagged{8efb0172_date}{June 2025 - August 2025}} \\[-1pt]
+{\fontsize{9}{12}\selectfont \tagged{8efb0172_title}{Software Developer Intern}} \hfill {\fontsize{8.5}{11}\selectfont\textit{\tagged{8efb0172_location}{}}}
+\vspace{1pt}
+{\fontsize{8.5}{12}\selectfont
+\begin{itemize}[leftmargin=1.2em, noitemsep, topsep=1pt, parsep=0pt]
+
+  \item \tagged{experience_8efb0172_b1}{Designed and delivered Power Apps solutions for cadet asset management, integrating Dataverse with SQL Server to provide reliable data persistence and enabling internal users to track assets through customized forms and automated workflows.}
+
+  \item \tagged{experience_8efb0172_b2}{Implemented and deployed new pages, UI components, and dynamic dashboards within the core Vue.js web application serving over 10,000 program staff nationwide, enhancing internal reporting capabilities and supporting workflow automation through responsive design.}
+
+  \item \tagged{experience_8efb0172_b3}{Extended the .NET backend (both .NET Framework 4.0 and .NET Core 5+) by adding new data entities, creating SignalR hubs for real-time updates, and developing RESTful Web API endpoints that expose asset-tracking and reporting services, while writing T-SQL stored procedures to ensure efficient database interactions.}
+
+\end{itemize}
+}
+\vspace{5pt}
+
+{\fontsize{10}{13}\bf \tagged{4537e570_company}{Ericsson}} \hfill {\fontsize{8.5}{11}\selectfont \tagged{4537e570_date}{June 2024 - August 2024}} \\[-1pt]
+{\fontsize{9}{12}\selectfont \tagged{4537e570_title}{Digital Transformation and Software Testing Intern}} \hfill {\fontsize{8.5}{11}\selectfont\textit{\tagged{4537e570_location}{}}}
+\vspace{1pt}
+{\fontsize{8.5}{12}\selectfont
+\begin{itemize}[leftmargin=1.2em, noitemsep, topsep=1pt, parsep=0pt]
+
+  \item \tagged{experience_4537e570_b1}{Monitored and troubleshooted CI/CD pipelines using Jenkins and Kubernetes, diagnosing build and deployment failures by inspecting pod statuses and log files, and implementing corrective actions to maintain continuous integration and delivery stability for internal software services.}
+
+  \item \tagged{experience_4537e570_b2}{Maintained Grafana dashboards that tracked key performance indicators and system metrics, supported automated software testing workflows, and contributed to operational reporting pipelines, thereby improving visibility into telecom infrastructure health and facilitating data-driven decision making.}
+
+\end{itemize}
+}
+\vspace{5pt}
+
+
+\end{minipage}
+
+\end{document}
