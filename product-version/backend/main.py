@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from routes.creation_dashboard import router as dashboard_router
 from routes.jobs import router as job_router
 from dependencies import supabase_admin, supabase, get_current_user, FRONTEND_ORIGIN, redis_client
+from functions.cv_latex import cv_selector, stamp_cv_ids
 import csv
 
 app = FastAPI()
@@ -550,15 +551,26 @@ def update_user_job_status(user_job_id: str, new_status: str, current_user=Depen
 def get_custom_cv(job_id = ..., current_user = Depends(get_current_user)):
     pass
 
-@app.post("/custom_cv/generator")
-def cv_generator(job_id = ..., current_user = Depends(get_current_user)):
-    pass
-    #{
-    #   "selected_experiences": ["abc-123", "def-456"],
-    #   "selected_projects": ["xyz-789"],
-    #   "tailored_text": "..."
-    # }
-    ## and ALTER TABLE user_jobs ALTER COLUMN cv_text TYPE JSONB USING cv_text::jsonb;
+@app.post("/custom_cv/generate")
+def cv_generator(job_id: str, dashboard_config_id: str, current_user=Depends(get_current_user)):
+    job = supabase_admin.table("jobs").select("*").eq("id", job_id).single().execute().data
+
+    user_job = supabase_admin.table("user_jobs") \
+        .select("*") \
+        .eq("user_id", current_user["user_id"]) \
+        .eq("job_id", job_id) \
+        .eq("dashboard_config_id", dashboard_config_id) \
+        .single().execute().data
+
+    selected = cv_selector(job, current_user)
+    stamped  = stamp_cv_ids(selected)
+
+    supabase_admin.table("user_jobs").update({
+        "cv_json": stamped
+    }).eq("id", user_job["id"]).execute()
+
+    return {"status": "ok", "user_job_id": user_job["id"], "cv_text": stamped}
+
 
 @app.put("/custom_cv/edit")
 def cv_edit(job_id = ..., current_user = Depends(get_current_user)):
