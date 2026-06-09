@@ -1,0 +1,31 @@
+well we oughtta use latex,
+html to text is wacky and hard, maintaing templates must be easier in latex to be fair
+
+
+SwiftLaTeX renders PDF preview (canvas, read only)
+user clicks a region → PDF.js bounding boxes detect which section
+→ floating editor panel opens for that section (not a side panel, literally a popover near where they clicked)
+→ user edits in the popover
+→ cv_json updates → .tex regenerates → SwiftLaTeX recompiles → canvas updates
+
+
+backend parts:
+    blank .tex templates (one per template style)
+    cv_json per user
+
+    backend takes cv_json + chosen template
+    fills the .tex with all content + bakes in the \tagged{id}{text} macros for every field
+    sends back the filled .tex string
+
+frontend parts:
+
+    complete ready-to-compile .tex with all IDs embedded
+    feeds it to SwiftLaTeX → renders
+    PDF.js reads the tagged anchors → builds the clickable overlay
+
+    on save:
+    frontend sends updated cv_json and backend refills the template
+    backend compiles with pdflatex → stores PDF   (or xelatex/xetex to have some compiler as swiflatex ig)
+    backend also updates away the cv_json in schema
+
+***every atomic piece of cv_json needs an ID***

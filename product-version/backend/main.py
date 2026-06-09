@@ -525,10 +525,6 @@ def get_all_user_jobs(current_user=Depends(get_current_user)):
     return {"status": "ok", "user_jobs": user_jobs.data}
 
 
-@app.get("/user_jobs/config")
-def get_config_user_jobs(current_user = Depends(get_current_user), config = DashboardReference):
-    pass
-
 @app.patch("/user_jobs/status")
 def update_user_job_status(user_job_id: str, new_status: str, current_user=Depends(get_current_user)):
     """Update application status for a single user_job."""
