@@ -1,10 +1,10 @@
+
 \documentclass[10pt]{article}
-\usepackage[left=0in,top=0in,right=0.4in,bottom=0in,noheadfoot]{geometry}
+\usepackage[margin=0in, noheadfoot]{geometry}
 \usepackage{hyperref}
 \usepackage{enumitem}
 \usepackage{xcolor}
-\usepackage{tikz}
-\usepackage{atbegshi}
+\usepackage[most]{tcolorbox}
 
 \renewcommand{\familydefault}{\rmdefault}
 \pagestyle{empty}
@@ -13,47 +13,48 @@
 
 \hypersetup{colorlinks=true,linkcolor=black,urlcolor=black}
 
-\definecolor{sidebarcolor}{RGB}{240,240,240}
-\definecolor{linecolor}{RGB}{80,80,80}
+\definecolor{sidebarcolor}{RGB}{235,235,235}
+\definecolor{headercolor}{RGB}{60,60,60}
 
-%% draws the full-height sidebar background on every page
-\AddToShipoutPictureBG{
-  \begin{tikzpicture}[remember picture, overlay]
-    \fill[sidebarcolor] (current page.north west) rectangle
-      ([xshift=0.32\paperwidth] current page.south west);
-  \end{tikzpicture}
-}
-
-\newcommand{\cvsection}[1]{
-  \vspace{6pt}
-  {\large\bf #1}
-  \vspace{2pt}
-  \hrule
-  \vspace{5pt}
+\newcommand{\cvsection}[1]{%
+  \vspace{7pt}%
+  {\large\bf #1}%
+  \vspace{2pt}%
+  \hrule%
+  \vspace{5pt}%
 }
 
 \newcommand{\tagged}[2]{\hypertarget{#1}{#2}}
 
 \begin{document}
+\begin{tcolorbox}[
+  enhanced,
+  sidebyside,
+  sidebyside align=top,
+  sidebyside gap=0mm,
+  lefthand ratio=0.30,
+  colback=sidebarcolor,
+  colbacklower=white,
+  colframe=white,
+  segmentation style={solid, draw=gray, line width=0.4pt},
+  boxrule=0pt,
+  left=6pt, right=6pt, top=0pt, bottom=0pt,
+  lower separated=false,
+  height fill
+]
 
-%% full-width name bar
-\noindent
-\begin{tikzpicture}[remember picture, overlay]
-  \fill[linecolor] (current page.north west)
-    rectangle ([yshift=-1.1cm] current page.north east);
-\end{tikzpicture}
-\vspace{-0.5cm}
-\begin{center}
-  {\LARGE\bf\color{white} \tagged{contact_name}{<<contact_name>>}}
-\end{center}
-\vspace{0.4cm}
+%% ── LEFT COLUMN ──────────────────────────────────────────────────────────────
 
-%% two columns via minipage — left 30%, right 70%
-\noindent
-\begin{minipage}[t]{0.28\textwidth}
-\vspace{0pt}
-\hspace{6pt}
-\begin{minipage}[t]{\dimexpr\textwidth-6pt}
+\begin{tcolorbox}[
+  enhanced,
+  colback=headercolor,
+  colframe=headercolor,
+  boxrule=0pt,
+  left=4pt, right=4pt, top=6pt, bottom=6pt,
+  sharp corners
+]
+  {\LARGE\bf\color{white}\centering \tagged{contact_name}{<<contact_name>>}\par}
+\end{tcolorbox}
 
 \cvsection{Contact}
 {\fontsize{8.5}{12}\selectfont
@@ -69,9 +70,8 @@
 {\fontsize{9.5}{13}\bf \tagged{<<edu.id>>_school}{<<edu.school>>}} \\[2pt]
 {\fontsize{8.5}{11}\selectfont \tagged{<<edu.id>>_degree}{<<edu.degree>>}} \\[2pt]
 {\fontsize{8}{10}\selectfont \tagged{<<edu.id>>_field}{<<edu.field>>}} \\[2pt]
-{\fontsize{8}{10}\selectfont \tagged{<<edu.id>>_location}{<<edu.location>>}} \\[2pt]
 {\fontsize{8}{10}\selectfont \tagged{<<edu.id>>_date}{<<edu.date>>}}
-\vspace{6pt}
+\vspace{5pt}
 %%END_FOR%%
 
 \cvsection{Skills}
@@ -83,14 +83,11 @@
 %%END_FOR%%
 }
 
-\end{minipage}
-\end{minipage}%
-\hspace{4pt}%
-\textcolor{linecolor}{\vrule width 0.4pt height \textheight}%
-\hspace{8pt}%
-\begin{minipage}[t]{0.65\textwidth}
-\vspace{0pt}
+\tcblower
 
+%% ── RIGHT COLUMN ─────────────────────────────────────────────────────────────
+
+\vspace{8pt}
 \cvsection{Experience}
 %%FOR_EACH exp IN experiences%%
 {\fontsize{10}{13}\bf \tagged{<<exp.id>>_company}{<<exp.company>>}} \hfill {\fontsize{8.5}{11}\selectfont \tagged{<<exp.id>>_date}{<<exp.date>>}} \\[-1pt]
@@ -106,6 +103,5 @@
 \vspace{5pt}
 %%END_FOR%%
 
-\end{minipage}
-
+\end{tcolorbox}
 \end{document}
